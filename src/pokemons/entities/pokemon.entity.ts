@@ -13,11 +13,21 @@ export class Pokemon {
   pastTypes: never;
   species: NameAndUrl[];
   sprites: Sprite[];
-  versions: Version[];
+  spriteVersions: Record<number, Record<Title, Sprite>>;
   stats: Stat[];
   kind: Kind[];
   weight: number;
 }
+
+type NameAndUrl = {
+  name: string;
+  url: string;
+};
+
+type Ability = {
+  isHidden: boolean;
+  slot: number;
+} & NameAndUrl;
 
 type Kind = {
   slot: number;
@@ -28,61 +38,41 @@ type Stat = {
   effort: number;
 } & NameAndUrl;
 
-type SpriteByGeneration = {
-  front_default: string | null;
-  front_female: string | null;
-  front_shiny: string | null;
-  front_shiny_female: string | null;
+type SpriteMap = {
+  front_default?: string;
+  front_female?: string;
+  front_shiny?: string;
+  front_shiny_female?: string;
+  back_default?: string;
+  back_female?: string;
+  back_shiny?: string;
+  back_shiny_female?: string;
 };
 
-type GenerationOne = 'red-blue' | 'yellow';
-type GenerationTwo = 'crystal' | 'gold' | 'silver';
-type GenerationThree = 'emerald' | 'firered-leafgreen' | 'ruby-sapphire';
-type GenerationFour = 'diamond-pearl' | 'heartgold-soulsilver' | 'platinum';
-type GenerationFive = 'black-white';
-// icons
-type GenerationSix = 'omegaruby-alphasapphire' | 'x-y';
-// icons
-type GenerationSeven = 'ultra-sun-ultra-moon';
-type GenerationEight = never;
-
-// check later whether we want a Record or sum type
-//
-// "back_default"
-// "back_female"
-// "back_shiny"
-// "back_shiny_female"
-// "front_default"
-// "front_female"
-// "front_shiny"
-// "front_shiny_female"
-//  "other": {
-// "dream_world": {
-//     "front_default"
-//     "front_female"
-// },
-// "home": {
-//     "front_default"
-//     "front_female"
-//     "front_shiny"
-//     "front_shiny_female"
-// },
-// "official-artwork": {
-//     "front_default"
-// }
-// }
-type Sprite = string | null;
-
-type NameAndUrl = {
-  name: string;
-  url: string;
+type Sprite = {
+  basic: SpriteMap;
+  other: Record<string, SpriteMap>;
+  icons: SpriteMap;
 };
+
+const generationRecord = {
+  1: ['red-blue', 'yellow'],
+  2: ['crystal', 'gold', 'silver'],
+  3: ['emerald', 'firered-leafgreen', 'ruby-sapphire'],
+  4: ['diamond-pearl', 'heartgold-soulsilver', 'platinum'],
+  5: ['black-white'],
+  6: ['omegaruby-alphasapphire', 'x-y'],
+  7: ['ultra-sun-ultra-moon'],
+  8: [],
+} as const satisfies Record<number, string[]>;
+
+type Title = (typeof generationRecord)[keyof typeof generationRecord][number];
 
 type Move = {
-  versionGroupDetails: VersionGroupDetails;
+  versionGroupDetails: MoveVersionDetails;
 } & NameAndUrl;
 
-type VersionGroupDetails = {
+type MoveVersionDetails = {
   levelLearnedAt: number;
   moveLearnMethod: NameAndUrl[];
   versionGroup: NameAndUrl[];
@@ -97,14 +87,7 @@ type VersionDetails = {
   version: NameAndUrl;
 };
 
-type GameVersion = never;
-
 class GameIndex {
   value: 153;
   version: NameAndUrl;
 }
-
-type Ability = {
-  isHidden: boolean;
-  slot: number;
-} & NameAndUrl;
