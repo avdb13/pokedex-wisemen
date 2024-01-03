@@ -1,44 +1,114 @@
+import {
+  Column,
+  Entity,
+  ManyToMany,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+
+abstract class NameAndUrl<T extends string = string> {
+  name: T;
+  url: string;
+}
+
+@Entity()
+export class VersionDetails extends NameAndUrl<Title> {}
+
+@Entity()
 export class Pokemon {
-  abilities: Ability[];
-  baseExperience: number;
-  forms: NameAndUrl[];
-  gameIndices: GameIndex[];
-  height: number;
-  heldItems: Item[];
+  @PrimaryGeneratedColumn()
   id: number;
+
+  @OneToMany()
+  abilities: Ability[];
+
+  @Column()
+  baseExperience: number;
+
+  @Column()
+  forms: NameAndUrl[];
+
+  @Column()
+  gameIndices: GameIndex[];
+
+  @Column()
+  height: number;
+
+  // many-to-many since there's a finite number of items
+  @ManyToMany()
+  heldItems: Item[];
+
+  @Column()
   isDefault: boolean;
+
+  @Column()
   locationAreaEncounters: string;
+
+  @ManyToMany()
   moves: Move[];
+
+  @Column()
   order: number;
+
+  @Column()
   pastTypes: never;
-  species: NameAndUrl[];
+
+  @OneToOne()
+  species: Species;
+
+  @OneToMany()
   sprites: Sprite[];
-  spriteVersions: Record<number, Record<Title, Sprite>>;
+
+  @OneToMany()
   stats: Stat[];
+
+  @Column()
   kind: Kind[];
+
+  @Column()
   weight: number;
 }
 
-type NameAndUrl = {
-  name: string;
-  url: string;
-};
-
-type Ability = {
+@Entity()
+class Ability extends NameAndUrl {
   isHidden: boolean;
   slot: number;
-} & NameAndUrl;
+}
 
-type Kind = {
-  slot: number;
-} & NameAndUrl;
+@Entity()
+export class Forms extends NameAndUrl {}
 
-type Stat = {
-  base: number;
-  effort: number;
-} & NameAndUrl;
+@Entity()
+class GameIndex extends NameAndUrl {
+  @Column()
+  value: number;
+}
 
-type SpriteMap = {
+class ItemVersionDetails extends VersionDetails {
+  rarity: number;
+}
+
+class Item extends NameAndUrl {
+  versionDetails: ItemVersionDetails[];
+}
+
+class MoveVersionDetails extends VersionDetails {
+  levelLearnedAt: number;
+  moveLearnMethod: NameAndUrl[];
+  versionGroup: NameAndUrl[];
+}
+
+@Entity()
+class Move extends NameAndUrl {
+  @OneToMany()
+  versionDetails: MoveVersionDetails[];
+}
+
+@Entity()
+class Species extends NameAndUrl {}
+
+abstract class AllowedSprites {
   front_default?: string;
   front_female?: string;
   front_shiny?: string;
@@ -47,13 +117,25 @@ type SpriteMap = {
   back_female?: string;
   back_shiny?: string;
   back_shiny_female?: string;
-};
+}
 
-type Sprite = {
-  basic: SpriteMap;
-  other: Record<string, SpriteMap>;
-  icons: SpriteMap;
-};
+@Entity()
+class Sprite extends AllowedSprites {
+  target?: string;
+  title: Title;
+  animated: boolean;
+  icons: boolean;
+}
+
+class Kind extends NameAndUrl {
+  slot: number;
+}
+
+@Entity()
+class Stat extends NameAndUrl {
+  base: number;
+  effort: number;
+}
 
 const generationRecord = {
   1: ['red-blue', 'yellow'],
@@ -67,27 +149,3 @@ const generationRecord = {
 } as const satisfies Record<number, string[]>;
 
 type Title = (typeof generationRecord)[keyof typeof generationRecord][number];
-
-type Move = {
-  versionGroupDetails: MoveVersionDetails;
-} & NameAndUrl;
-
-type MoveVersionDetails = {
-  levelLearnedAt: number;
-  moveLearnMethod: NameAndUrl[];
-  versionGroup: NameAndUrl[];
-};
-
-type Item = {
-  versionDetails: VersionDetails;
-} & NameAndUrl;
-
-type VersionDetails = {
-  rarity: number;
-  version: NameAndUrl;
-};
-
-class GameIndex {
-  value: 153;
-  version: NameAndUrl;
-}
