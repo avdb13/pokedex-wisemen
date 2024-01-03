@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
-import { pokemons } from '../../pokemons.json' assert { type: 'json' };
+import { pokemons } from './../pokemons';
+import { JsonPokemonDto } from './dto/json-pokemon.dto';
 
 @Injectable()
 export class PokemonsService {
@@ -9,8 +10,8 @@ export class PokemonsService {
     return 'This action adds a new pokemon';
   }
 
-  findAll() {
-    return `This action returns all pokemons`;
+  findAll(): JsonPokemonDto[] {
+    return pokemons;
   }
 
   findOne(id: number) {
@@ -25,5 +26,7 @@ export class PokemonsService {
     return `This action removes a #${id} pokemon`;
   }
 
-  loadFromJson() {}
+  loadFromJson() {
+    pokemons;
+  }
 }

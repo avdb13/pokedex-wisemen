@@ -10,9 +10,9 @@ import {
 import { PokemonsService } from './pokemons.service';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
-import { PokemonDto } from './pokemons';
+import { JsonPokemonDto } from './dto/json-pokemon.dto';
 
-@Controller('pokemons')
+@Controller('/api/v1/pokemons')
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
@@ -22,7 +22,7 @@ export class PokemonsController {
   }
 
   @Get()
-  findAll() {
+  findAll(): JsonPokemonDto[] {
     return this.pokemonsService.findAll();
   }
 
@@ -42,7 +42,7 @@ export class PokemonsController {
   }
 
   @Post('json')
-  loadFromJson(@Body() pokemons: Array<PokemonDto>) {
-    pokemons.map((p) => p.abilities);
+  loadFromJson(@Body() pokemons: Array<JsonPokemonDto>) {
+    console.log(pokemons);
   }
 }
