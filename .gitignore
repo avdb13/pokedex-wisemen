@@ -36,3 +36,4 @@ lerna-debug.log*
 
 # My extra files
 /pokemons.json
+/pokemons.ts

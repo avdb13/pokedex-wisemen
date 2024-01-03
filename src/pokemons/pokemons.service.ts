@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { pokemons } from '../../pokemons.json' assert { type: 'json' };
 
 @Injectable()
 export class PokemonsService {
@@ -23,4 +24,6 @@ export class PokemonsService {
   remove(id: number) {
     return `This action removes a #${id} pokemon`;
   }
+
+  loadFromJson() {}
 }

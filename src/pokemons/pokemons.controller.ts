@@ -1,7 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { PokemonsService } from './pokemons.service';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { PokemonDto } from './pokemons';
 
 @Controller('pokemons')
 export class PokemonsController {
@@ -30,5 +39,10 @@ export class PokemonsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pokemonsService.remove(+id);
+  }
+
+  @Post('json')
+  loadFromJson(@Body() pokemons: Array<PokemonDto>) {
+    pokemons.map((p) => p.abilities);
   }
 }
