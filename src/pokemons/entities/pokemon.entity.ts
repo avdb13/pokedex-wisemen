@@ -1,14 +1,20 @@
 import {
   Column,
   Entity,
+  JoinColumn,
+  JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
 abstract class NameAndUrl<T extends string = string> {
+  @Column()
   name: T;
+
+  @Column()
   url: string;
 }
 
@@ -20,23 +26,24 @@ export class Pokemon {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToMany()
+  @OneToMany(() => Ability, (ability) => ability.pokemon)
   abilities: Ability[];
 
   @Column()
   baseExperience: number;
 
-  @Column()
-  forms: NameAndUrl[];
+  @OneToMany(() => Form, (form) => form.pokemon)
+  forms: Form[];
 
-  @Column()
+  @OneToMany(() => GameIndex, (gameIndex) => gameIndex.pokemon)
   gameIndices: GameIndex[];
 
   @Column()
   height: number;
 
   // many-to-many since there's a finite number of items
-  @ManyToMany()
+  @ManyToMany(() => Item)
+  @JoinTable()
   heldItems: Item[];
 
   @Column()
@@ -45,7 +52,8 @@ export class Pokemon {
   @Column()
   locationAreaEncounters: string;
 
-  @ManyToMany()
+  @ManyToMany(() => Move)
+  @JoinTable()
   moves: Move[];
 
   @Column()
@@ -54,10 +62,11 @@ export class Pokemon {
   @Column()
   pastTypes: never;
 
-  @OneToOne()
+  @OneToOne(() => Species)
+  @JoinColumn()
   species: Species;
 
-  @OneToMany()
+  @OneToMany(() => Sprite, (sprite) => sprite.pokemon)
   sprites: Sprite[];
 
   @OneToMany()
@@ -72,36 +81,63 @@ export class Pokemon {
 
 @Entity()
 class Ability extends NameAndUrl {
+  @Column()
   isHidden: boolean;
+
+  @Column()
   slot: number;
+
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.abilities)
+  pokemon: Pokemon;
 }
 
 @Entity()
-export class Forms extends NameAndUrl {}
+export class Form extends NameAndUrl {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.forms)
+  pokemon: Pokemon;
+}
 
 @Entity()
 class GameIndex extends NameAndUrl {
   @Column()
   value: number;
+
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.forms)
+  pokemon: Pokemon;
 }
 
 class ItemVersionDetails extends VersionDetails {
+  @Column()
   rarity: number;
+
+  @ManyToOne(() => Item, (item) => item.versionDetails)
+  item: Item;
 }
 
+@Entity()
 class Item extends NameAndUrl {
+  @OneToMany(() => ItemVersionDetails, (details) => details.item)
   versionDetails: ItemVersionDetails[];
 }
 
+@Entity()
 class MoveVersionDetails extends VersionDetails {
+  @Column()
   levelLearnedAt: number;
-  moveLearnMethod: NameAndUrl[];
-  versionGroup: NameAndUrl[];
+
+  @Column(() => NameAndUrl)
+  moveLearnMethod: NameAndUrl;
+
+  @Column(() => NameAndUrl)
+  versionGroup: NameAndUrl;
+
+  @ManyToOne(() => Move, (move) => move.versionDetails)
+  move: Move;
 }
 
 @Entity()
 class Move extends NameAndUrl {
-  @OneToMany()
+  @OneToMany(() => MoveVersionDetails, (details) => details.move)
   versionDetails: MoveVersionDetails[];
 }
 
@@ -109,21 +145,39 @@ class Move extends NameAndUrl {
 class Species extends NameAndUrl {}
 
 abstract class AllowedSprites {
+  @Column()
   front_default?: string;
+  @Column()
   front_female?: string;
+  @Column()
   front_shiny?: string;
+  @Column()
   front_shiny_female?: string;
+  @Column()
   back_default?: string;
+  @Column()
   back_female?: string;
+  @Column()
   back_shiny?: string;
+  @Column()
   back_shiny_female?: string;
 }
 
 @Entity()
 class Sprite extends AllowedSprites {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
+  pokemon: Pokemon;
+
+  @Column()
   target?: string;
+
+  @Column()
   title: Title;
+
+  @Column()
   animated: boolean;
+
+  @Column()
   icons: boolean;
 }
 
