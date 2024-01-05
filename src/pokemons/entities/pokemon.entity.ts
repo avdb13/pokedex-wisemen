@@ -69,11 +69,11 @@ export class Pokemon {
   @OneToMany(() => Sprite, (sprite) => sprite.pokemon)
   sprites: Sprite[];
 
-  @OneToMany()
+  @OneToMany(() => Stat, (stat) => stat.pokemon)
   stats: Stat[];
 
   @Column()
-  kind: Kind[];
+  types: Kind[];
 
   @Column()
   weight: number;
@@ -187,7 +187,13 @@ class Kind extends NameAndUrl {
 
 @Entity()
 class Stat extends NameAndUrl {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
+  pokemon: Pokemon;
+
+  @Column()
   base: number;
+
+  @Column()
   effort: number;
 }
 
