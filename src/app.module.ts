@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { PokemonsModule } from './pokemons/pokemons.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TeamsModule } from './teams/teams.module';
+import { join } from 'path';
 
 // TODO: config file for database credentials
 @Module({
@@ -15,7 +16,7 @@ import { TeamsModule } from './teams/teams.module';
       port: 5432,
       password: 'pokedex',
       username: 'pokedex',
-      entities: [],
+      entities: [join(__dirname, '**', '*.entity.{ts,js}')],
       database: 'pokedex',
       synchronize: true,
       logging: true,

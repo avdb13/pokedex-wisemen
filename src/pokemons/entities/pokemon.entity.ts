@@ -61,9 +61,9 @@ export class Pokemon {
   @OneToMany(() => PastType, (past_type) => past_type.pokemon)
   past_types: Relation<PastType[]>;
 
-  @OneToOne(() => Species)
-  @JoinColumn()
-  species: Relation<Species>;
+  @Column(() => NameAndUrl)
+  // all species arrays are of length one in our data
+  species: NameAndUrl;
 
   @OneToMany(() => Sprite, (sprite) => sprite.pokemon)
   sprites: Relation<Sprite[]>;
@@ -80,6 +80,9 @@ export class Pokemon {
 
 @Entity()
 export class Ability extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column()
   is_hidden: boolean;
 
@@ -92,6 +95,9 @@ export class Ability extends NameAndUrl {
 
 @Entity()
 export class GameIndex extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column()
   value: number;
 
@@ -101,6 +107,9 @@ export class GameIndex extends NameAndUrl {
 
 @Entity()
 export class ItemVersionDetails extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column()
   rarity: number;
 
@@ -110,6 +119,9 @@ export class ItemVersionDetails extends NameAndUrl {
 
 @Entity()
 export class Item extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.held_items)
   pokemon: Relation<Pokemon>;
 
@@ -119,6 +131,9 @@ export class Item extends NameAndUrl {
 
 @Entity()
 export class MoveVersionDetails {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Column()
   level_learned_at: number;
 
@@ -134,6 +149,9 @@ export class MoveVersionDetails {
 
 @Entity()
 export class Move extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.moves)
   pokemon: Relation<Pokemon>;
 
@@ -143,6 +161,9 @@ export class Move extends NameAndUrl {
 
 @Entity()
 export class PastType extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @OneToMany(() => PastType, (past_type) => past_type.types)
   types: Relation<PastTypeKind[]>;
 
@@ -152,6 +173,9 @@ export class PastType extends NameAndUrl {
 
 @Entity()
 export class PastTypeKind extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => PastTypeKind, (kind) => kind.parent)
   parent: Relation<PastType>;
 
@@ -159,41 +183,41 @@ export class PastTypeKind extends NameAndUrl {
   slot: number;
 }
 
-@Entity()
-export class Species extends NameAndUrl {}
-
 abstract class SpriteMap {
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   front_default?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   front_female?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   front_shiny?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   front_shiny_female?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   back_default?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   back_female?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   back_shiny?: string | null;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   back_shiny_female?: string | null;
 }
 
 @Entity()
 export class Sprite extends SpriteMap {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
   pokemon: Relation<Pokemon>;
 
-  @Column({ nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   title?: string | null;
 
   @Column({ nullable: true, default: false })
@@ -208,6 +232,9 @@ export class Sprite extends SpriteMap {
 
 @Entity()
 export class Kind extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.types)
   pokemon: Relation<Pokemon>;
 
@@ -217,6 +244,9 @@ export class Kind extends NameAndUrl {
 
 @Entity()
 export class Stat extends NameAndUrl {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
   pokemon: Relation<Pokemon>;
 

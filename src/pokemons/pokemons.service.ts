@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsOrder, FindOptionsOrderValue, Repository } from 'typeorm';
-import { pokemons } from './../pokemons';
+import { FindOptionsOrderValue, Repository } from 'typeorm';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import {
@@ -20,7 +19,7 @@ export class PokemonsService {
     @InjectRepository(Pokemon) private pokemonRepository: Repository<Pokemon>,
   ) {}
 
-  async create(pokemonDto: JsonPokemonDto) {
+  convert(pokemonDto: JsonPokemonDto) {
     const pokemon = new Pokemon();
 
     const abilities = pokemonDto.abilities.map(
@@ -33,11 +32,7 @@ export class PokemonsService {
     );
     pokemon.abilities = abilities;
 
-    const forms = pokemonDto.forms.map((form) => ({
-      ...form,
-      pokemon,
-    }));
-    pokemon.forms = forms;
+    pokemon.form = pokemonDto.forms[0];
 
     const game_indices = pokemonDto.game_indices.map(
       ({ version, game_index }) => ({
@@ -168,14 +163,33 @@ export class PokemonsService {
     pokemon.species = species;
     pokemon.weight = weight;
 
+    return pokemon;
+  }
+
+  async create(pokemonDto: JsonPokemonDto) {
+    const pokemon = this.convert(pokemonDto);
+
     return this.pokemonRepository.save(pokemon);
   }
 
+  async createMany(pokemonDtoArr: JsonPokemonDto[]) {
+    const pokemonArr = pokemonDtoArr.map((pokemonDto) =>
+      this.convert(pokemonDto),
+    );
+
+    await this.pokemonRepository
+      .createQueryBuilder()
+      .insert()
+      .into(Pokemon)
+      .values(pokemonArr)
+      .execute();
+  }
+
   findAll(
-    sortBy?: 'name' | 'id' = 'id',
+    sortBy: 'name' | 'id' = 'id',
     // can be undefined to we make it optional here too
     order?: FindOptionsOrderValue,
-  ): JsonPokemonDto[] {
+  ) {
     switch (sortBy) {
       case 'name':
         return this.pokemonRepository.find({
@@ -203,7 +217,5 @@ export class PokemonsService {
     return `This action removes a #${id} pokemon`;
   }
 
-  loadFromJson() {
-    pokemons;
-  }
+  loadFromJson() {}
 }

@@ -64,4 +64,13 @@ export class PokemonsController {
   remove(@Param('id') id: string) {
     return this.pokemonsService.remove(+id);
   }
+
+  @Post('json')
+  createFromJson(@Body() body: JsonPokemonDto | Array<JsonPokemonDto>) {
+    if (Array.isArray(body)) {
+      this.pokemonsService.createMany(body);
+    } else {
+      this.pokemonsService.create(body);
+    }
+  }
 }
