@@ -30,13 +30,13 @@ export class Pokemon {
   abilities: Ability[];
 
   @Column()
-  baseExperience: number;
+  base_experience: number;
 
   @OneToMany(() => Form, (form) => form.pokemon)
   forms: Form[];
 
   @OneToMany(() => GameIndex, (gameIndex) => gameIndex.pokemon)
-  gameIndices: GameIndex[];
+  game_indices: GameIndex[];
 
   @Column()
   height: number;
@@ -44,13 +44,13 @@ export class Pokemon {
   // many-to-many since there's a finite number of items
   @ManyToMany(() => Item)
   @JoinTable()
-  heldItems: Item[];
+  held_items: Item[];
 
   @Column()
-  isDefault: boolean;
+  is_default: boolean;
 
   @Column()
-  locationAreaEncounters: string;
+  location_area_encounters: string;
 
   @ManyToMany(() => Move)
   @JoinTable()
@@ -60,7 +60,7 @@ export class Pokemon {
   order: number;
 
   @Column()
-  pastTypes: never;
+  pastTypes: PastType[];
 
   @OneToOne(() => Species)
   @JoinColumn()
@@ -72,7 +72,7 @@ export class Pokemon {
   @OneToMany(() => Stat, (stat) => stat.pokemon)
   stats: Stat[];
 
-  @Column()
+  @OneToMany(() => Kind, (kind) => kind.pokemon)
   types: Kind[];
 
   @Column()
@@ -80,9 +80,9 @@ export class Pokemon {
 }
 
 @Entity()
-class Ability extends NameAndUrl {
+export class Ability extends NameAndUrl {
   @Column()
-  isHidden: boolean;
+  is_hidden: boolean;
 
   @Column()
   slot: number;
@@ -117,19 +117,19 @@ class ItemVersionDetails extends VersionDetails {
 @Entity()
 class Item extends NameAndUrl {
   @OneToMany(() => ItemVersionDetails, (details) => details.item)
-  versionDetails: ItemVersionDetails[];
+  version_details: ItemVersionDetails[];
 }
 
 @Entity()
 class MoveVersionDetails extends VersionDetails {
   @Column()
-  levelLearnedAt: number;
+  level_learned_at: number;
 
   @Column(() => NameAndUrl)
-  moveLearnMethod: NameAndUrl;
+  move_learn_method: NameAndUrl;
 
   @Column(() => NameAndUrl)
-  versionGroup: NameAndUrl;
+  version_group: NameAndUrl;
 
   @ManyToOne(() => Move, (move) => move.versionDetails)
   move: Move;
@@ -138,7 +138,22 @@ class MoveVersionDetails extends VersionDetails {
 @Entity()
 class Move extends NameAndUrl {
   @OneToMany(() => MoveVersionDetails, (details) => details.move)
-  versionDetails: MoveVersionDetails[];
+  version_group_details: MoveVersionDetails[];
+}
+
+@Entity()
+class PastType extends NameAndUrl {
+  @OneToMany(() => PastType, (past_type) => past_type.types)
+  types: PastTypeKind[];
+}
+
+@Entity()
+class PastTypeKind extends NameAndUrl {
+  @ManyToOne(() => PastTypeKind, (kind) => kind.parent)
+  parent: PastType;
+
+  @Column()
+  slot: number;
 }
 
 @Entity()
@@ -164,29 +179,34 @@ abstract class AllowedSprites {
 }
 
 @Entity()
-class Sprite extends AllowedSprites {
+export class Sprite extends AllowedSprites {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
   pokemon: Pokemon;
 
   @Column()
-  target?: string;
+  title?: Title;
 
   @Column()
-  title: Title;
+  isOther: boolean = false;
 
   @Column()
-  animated: boolean;
+  isAnimated: boolean = false;
 
   @Column()
-  icons: boolean;
+  isIcons: boolean = false;
 }
 
-class Kind extends NameAndUrl {
+@Entity()
+export class Kind extends NameAndUrl {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.types)
+  pokemon: Pokemon;
+
+  @Column()
   slot: number;
 }
 
 @Entity()
-class Stat extends NameAndUrl {
+export class Stat extends NameAndUrl {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
   pokemon: Pokemon;
 
@@ -208,4 +228,5 @@ const generationRecord = {
   8: [],
 } as const satisfies Record<number, string[]>;
 
-type Title = (typeof generationRecord)[keyof typeof generationRecord][number];
+export type Title =
+  (typeof generationRecord)[keyof typeof generationRecord][number];

@@ -6,11 +6,13 @@ import {
   Patch,
   Param,
   Delete,
+  Req,
 } from '@nestjs/common';
 import { PokemonsService } from './pokemons.service';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
+import { Request } from 'express';
 
 @Controller('/api/v1/pokemons')
 export class PokemonsController {
@@ -22,7 +24,9 @@ export class PokemonsController {
   }
 
   @Get()
-  findAll(): JsonPokemonDto[] {
+  findAll(@Req() req: Request): JsonPokemonDto[] {
+    if (req.query.sort) {
+    }
     return this.pokemonsService.findAll();
   }
 
@@ -42,7 +46,9 @@ export class PokemonsController {
   }
 
   @Post('json')
-  loadFromJson(@Body() pokemons: Array<JsonPokemonDto>) {
-    console.log(pokemons);
+  createFromJson(@Body() pokemon: Array<JsonPokemonDto> | JsonPokemonDto) {
+    if (Array.isArray(pokemon)) {
+      return;
+    }
   }
 }

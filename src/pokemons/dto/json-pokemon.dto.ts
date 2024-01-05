@@ -17,7 +17,15 @@ type GameIndex = {
   version: NameAndUrl;
 };
 
-type Item = never;
+type ItemVersionDetails = {
+  rarity: number;
+  version: NameAndUrl;
+};
+
+type Item = {
+  item: NameAndUrl;
+  version_details: Array<ItemVersionDetails>;
+};
 
 type VersionGroupDetails = {
   level_learned_at: number;
@@ -46,7 +54,7 @@ type SpriteMap = {
   front_shiny_female: string | null;
 };
 
-type Sprite = {
+type Sprites = {
   other: Record<string, SpriteMap>;
   versions: Record<string, Record<string, SpriteMap>>;
 } & SpriteMap;
@@ -55,12 +63,12 @@ type Stat = {
   base_stat: number;
   effort: number;
   stat: NameAndUrl;
-}
+};
 
 type Kind = {
   slot: number;
   type: NameAndUrl;
-}
+};
 
 export class JsonPokemonDto {
   abilities: Array<Ability>;
@@ -77,8 +85,10 @@ export class JsonPokemonDto {
   order: number;
   past_types: Array<PastTypes>;
   species: NameAndUrl;
-  sprites: Array<Sprite>;
+  sprites: Sprites;
   stats: Array<Stat>;
   types: Array<Kind>;
   weight: number;
 }
+
+export { Ability as JsonAbilityDto };
