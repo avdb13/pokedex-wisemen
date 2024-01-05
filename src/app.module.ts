@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PokemonsModule } from './pokemons/pokemons.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { TeamsModule } from './teams/teams.module';
 
 // TODO: config file for database credentials
 @Module({
@@ -19,6 +20,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
       synchronize: true,
       logging: true,
     }),
+    TeamsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

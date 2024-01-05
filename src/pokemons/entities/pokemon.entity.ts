@@ -1,4 +1,5 @@
 import {
+  Relation,
   Column,
   Entity,
   JoinColumn,
@@ -10,16 +11,13 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-abstract class NameAndUrl<T extends string = string> {
+abstract class NameAndUrl {
   @Column()
-  name: T;
+  name: string;
 
   @Column()
   url: string;
 }
-
-@Entity()
-export class VersionDetails extends NameAndUrl<Title> {}
 
 @Entity()
 export class Pokemon {
@@ -106,22 +104,26 @@ export class GameIndex extends NameAndUrl {
   pokemon: Relation<Pokemon>;
 }
 
-class ItemVersionDetails extends VersionDetails {
+@Entity()
+export class ItemVersionDetails extends NameAndUrl {
   @Column()
   rarity: number;
 
-  @ManyToOne(() => Item, (item) => item.versionDetails)
+  @ManyToOne(() => Item, (item) => item.version_details)
   item: Relation<Item>;
 }
 
 @Entity()
 export class Item extends NameAndUrl {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.held_items)
+  pokemon: Relation<Pokemon>;
+
   @OneToMany(() => ItemVersionDetails, (details) => details.item)
   version_details: Relation<ItemVersionDetails[]>;
 }
 
 @Entity()
-export class MoveVersionDetails extends VersionDetails {
+export class MoveVersionDetails {
   @Column()
   level_learned_at: number;
 
@@ -131,12 +133,15 @@ export class MoveVersionDetails extends VersionDetails {
   @Column(() => NameAndUrl)
   version_group: NameAndUrl;
 
-  @ManyToOne(() => Move, (move) => move.versionDetails)
+  @ManyToOne(() => Move, (move) => move.version_group_details)
   move: Relation<Move>;
 }
 
 @Entity()
 export class Move extends NameAndUrl {
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.moves)
+  pokemon: Relation<Pokemon>;
+
   @OneToMany(() => MoveVersionDetails, (details) => details.move)
   version_group_details: Relation<MoveVersionDetails[]>;
 }
@@ -162,41 +167,48 @@ export class PastTypeKind extends NameAndUrl {
 @Entity()
 export class Species extends NameAndUrl {}
 
-abstract class AllowedSprites {
-  @Column()
-  front_default?: string;
-  @Column()
-  front_female?: string;
-  @Column()
-  front_shiny?: string;
-  @Column()
-  front_shiny_female?: string;
-  @Column()
-  back_default?: string;
-  @Column()
-  back_female?: string;
-  @Column()
-  back_shiny?: string;
-  @Column()
-  back_shiny_female?: string;
+abstract class SpriteMap {
+  @Column({ nullable: true, default: null })
+  front_default?: string | null;
+
+  @Column({ nullable: true, default: null })
+  front_female?: string | null;
+
+  @Column({ nullable: true, default: null })
+  front_shiny?: string | null;
+
+  @Column({ nullable: true, default: null })
+  front_shiny_female?: string | null;
+
+  @Column({ nullable: true, default: null })
+  back_default?: string | null;
+
+  @Column({ nullable: true, default: null })
+  back_female?: string | null;
+
+  @Column({ nullable: true, default: null })
+  back_shiny?: string | null;
+
+  @Column({ nullable: true, default: null })
+  back_shiny_female?: string | null;
 }
 
 @Entity()
-export class Sprite extends AllowedSprites {
+export class Sprite extends SpriteMap {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
   pokemon: Relation<Pokemon>;
 
-  @Column()
-  title?: Title;
+  @Column({ nullable: true, default: null })
+  title?: string | null;
 
-  @Column()
-  isOther: boolean = false;
+  @Column({ nullable: true, default: false })
+  is_other?: boolean;
 
-  @Column()
-  isAnimated: boolean = false;
+  @Column({ nullable: true, default: false })
+  is_animated?: boolean;
 
-  @Column()
-  isIcons: boolean = false;
+  @Column({ nullable: true, default: false })
+  is_icons?: boolean;
 }
 
 @Entity()
@@ -214,7 +226,7 @@ export class Stat extends NameAndUrl {
   pokemon: Relation<Pokemon>;
 
   @Column()
-  base: number;
+  base_stat: number;
 
   @Column()
   effort: number;
@@ -230,6 +242,10 @@ const generationRecord = {
   7: ['ultra-sun-ultra-moon'],
   8: [],
 } as const satisfies Record<number, string[]>;
+
+export const titles = Object.values(generationRecord).flatMap(
+  (x) => x as string[],
+);
 
 export type Title =
   (typeof generationRecord)[keyof typeof generationRecord][number];

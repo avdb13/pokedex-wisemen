@@ -1,31 +1,44 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
   Req,
 } from '@nestjs/common';
-import { PokemonsService } from './pokemons.service';
-import { CreatePokemonDto } from './dto/create-pokemon.dto';
-import { UpdatePokemonDto } from './dto/update-pokemon.dto';
-import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { Request } from 'express';
+
+import { JsonPokemonDto } from './dto/json-pokemon.dto';
+import { UpdatePokemonDto } from './dto/update-pokemon.dto';
+import { PokemonsService } from './pokemons.service';
+
+type ok = 'name-asc' | 'name-desc' | 'id-asc' | 'id-desc';
 
 @Controller('/api/v1/pokemons')
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Post()
-  create(@Body() createPokemonDto: CreatePokemonDto) {
-    return this.pokemonsService.create(createPokemonDto);
+  async create(@Body() pokemon: JsonPokemonDto) {
+    // if (Array.isArray(pokemon)) {
+    //   return;
+    // }
+
+    try {
+      await this.pokemonsService.create(pokemon);
+      console.log('success!');
+    } catch (e) {
+      console.log(e);
+    }
   }
 
   @Get()
   findAll(@Req() req: Request): JsonPokemonDto[] {
-    if (req.query.sort) {
+    const sortQuery = req.query.sort;
+    if (sortQuery && typeof sortQuery === string) {
+      sortQuery;
     }
     return this.pokemonsService.findAll();
   }
@@ -43,14 +56,5 @@ export class PokemonsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pokemonsService.remove(+id);
-  }
-
-  @Post('json')
-  createFromJson(@Body() pokemon: JsonPokemonDto) {
-    if (Array.isArray(pokemon)) {
-      return;
-    }
-
-    this.pokemonsService.create(pokemon);
   }
 }
