@@ -27,16 +27,16 @@ export class Pokemon {
   id: number;
 
   @OneToMany(() => Ability, (ability) => ability.pokemon)
-  abilities: Ability[];
+  abilities: Relation<Ability[]>;
 
   @Column()
   base_experience: number;
 
   @OneToMany(() => Form, (form) => form.pokemon)
-  forms: Form[];
+  forms: Relation<Form[]>;
 
   @OneToMany(() => GameIndex, (gameIndex) => gameIndex.pokemon)
-  game_indices: GameIndex[];
+  game_indices: Relation<GameIndex[]>;
 
   @Column()
   height: number;
@@ -44,7 +44,7 @@ export class Pokemon {
   // many-to-many since there's a finite number of items
   @ManyToMany(() => Item)
   @JoinTable()
-  held_items: Item[];
+  held_items: Relation<Item[]>;
 
   @Column()
   is_default: boolean;
@@ -54,26 +54,26 @@ export class Pokemon {
 
   @ManyToMany(() => Move)
   @JoinTable()
-  moves: Move[];
+  moves: Relation<Move[]>;
 
   @Column()
   order: number;
 
-  @Column()
-  pastTypes: PastType[];
+  @OneToMany(() => PastType, (past_type) => past_type.pokemon)
+  past_types: Relation<PastType[]>;
 
   @OneToOne(() => Species)
   @JoinColumn()
-  species: Species;
+  species: Relation<Species>;
 
   @OneToMany(() => Sprite, (sprite) => sprite.pokemon)
-  sprites: Sprite[];
+  sprites: Relation<Sprite[]>;
 
   @OneToMany(() => Stat, (stat) => stat.pokemon)
-  stats: Stat[];
+  stats: Relation<Stat[]>;
 
   @OneToMany(() => Kind, (kind) => kind.pokemon)
-  types: Kind[];
+  types: Relation<Kind[]>;
 
   @Column()
   weight: number;
@@ -88,22 +88,22 @@ export class Ability extends NameAndUrl {
   slot: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.abilities)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 }
 
 @Entity()
 export class Form extends NameAndUrl {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.forms)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 }
 
 @Entity()
-class GameIndex extends NameAndUrl {
+export class GameIndex extends NameAndUrl {
   @Column()
   value: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.forms)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 }
 
 class ItemVersionDetails extends VersionDetails {
@@ -111,17 +111,17 @@ class ItemVersionDetails extends VersionDetails {
   rarity: number;
 
   @ManyToOne(() => Item, (item) => item.versionDetails)
-  item: Item;
+  item: Relation<Item>;
 }
 
 @Entity()
-class Item extends NameAndUrl {
+export class Item extends NameAndUrl {
   @OneToMany(() => ItemVersionDetails, (details) => details.item)
-  version_details: ItemVersionDetails[];
+  version_details: Relation<ItemVersionDetails[]>;
 }
 
 @Entity()
-class MoveVersionDetails extends VersionDetails {
+export class MoveVersionDetails extends VersionDetails {
   @Column()
   level_learned_at: number;
 
@@ -132,32 +132,35 @@ class MoveVersionDetails extends VersionDetails {
   version_group: NameAndUrl;
 
   @ManyToOne(() => Move, (move) => move.versionDetails)
-  move: Move;
+  move: Relation<Move>;
 }
 
 @Entity()
-class Move extends NameAndUrl {
+export class Move extends NameAndUrl {
   @OneToMany(() => MoveVersionDetails, (details) => details.move)
-  version_group_details: MoveVersionDetails[];
+  version_group_details: Relation<MoveVersionDetails[]>;
 }
 
 @Entity()
-class PastType extends NameAndUrl {
+export class PastType extends NameAndUrl {
   @OneToMany(() => PastType, (past_type) => past_type.types)
-  types: PastTypeKind[];
+  types: Relation<PastTypeKind[]>;
+
+  @ManyToOne(() => Pokemon, (pokemon) => pokemon.past_types)
+  pokemon: Relation<Pokemon>;
 }
 
 @Entity()
-class PastTypeKind extends NameAndUrl {
+export class PastTypeKind extends NameAndUrl {
   @ManyToOne(() => PastTypeKind, (kind) => kind.parent)
-  parent: PastType;
+  parent: Relation<PastType>;
 
   @Column()
   slot: number;
 }
 
 @Entity()
-class Species extends NameAndUrl {}
+export class Species extends NameAndUrl {}
 
 abstract class AllowedSprites {
   @Column()
@@ -181,7 +184,7 @@ abstract class AllowedSprites {
 @Entity()
 export class Sprite extends AllowedSprites {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 
   @Column()
   title?: Title;
@@ -199,7 +202,7 @@ export class Sprite extends AllowedSprites {
 @Entity()
 export class Kind extends NameAndUrl {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.types)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 
   @Column()
   slot: number;
@@ -208,7 +211,7 @@ export class Kind extends NameAndUrl {
 @Entity()
 export class Stat extends NameAndUrl {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
-  pokemon: Pokemon;
+  pokemon: Relation<Pokemon>;
 
   @Column()
   base: number;

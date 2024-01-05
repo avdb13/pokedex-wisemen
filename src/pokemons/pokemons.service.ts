@@ -14,30 +14,6 @@ export class PokemonsService {
   ) {}
 
   create(pokemonDto: JsonPokemonDto) {
-    const pokemon = new Pokemon();
-
-    const {
-      id,
-      base_experience,
-      height,
-      is_default,
-      location_area_encounters,
-      order,
-      species,
-      weight,
-    } = pokemonDto;
-
-    const partial: Partial<Pokemon> = {
-      id,
-      base_experience,
-      height,
-      is_default,
-      location_area_encounters,
-      order,
-      species,
-      weight,
-    };
-
     const abilities = pokemonDto.abilities.map(
       ({ ability, is_hidden, slot }) => ({
         ...ability,
@@ -121,8 +97,30 @@ export class PokemonsService {
       pokemon,
     }));
 
+    const {
+      id,
+      base_experience,
+      height,
+      is_default,
+      location_area_encounters,
+      order,
+      species,
+      weight,
+    } = pokemonDto;
+
+    const partial: Partial<Pokemon> = {
+      id,
+      base_experience,
+      height,
+      is_default,
+      location_area_encounters,
+      order,
+      species,
+      weight,
+    };
+
     this.pokemonRepository.save({
-      ...pokemon,
+      ...partial,
       abilities,
       forms,
       game_indices,
