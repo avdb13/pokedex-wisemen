@@ -1,25 +1,18 @@
-export class GetPokemonDto {}
-// Pokemon:
-//   type: object
-//   properties:
-//     id:
-//       type: integer
-//     name:
-//       type: string
-//     sprites:
-//       type: object
-//       properties:
-//         front_default:
-//           type: string
-//     types:
-//       type: array
-//       items:
-//         type: object
-//         properties:
-//           type:
-//             type: object
-//             properties:
-//               name:
-//                 type: string
-//           slot:
-//             type: number
+class PokemonDto {
+  id: number;
+  name: string;
+  sprites: SpriteDto;
+  types: Array<TypesDto>;
+}
+
+class SpriteDto {
+  front_default: string;
+  types: Array<SpriteDto>;
+}
+
+class TypesDto {
+  type: { name: string };
+  slot: number;
+}
+
+export default PokemonDto;
