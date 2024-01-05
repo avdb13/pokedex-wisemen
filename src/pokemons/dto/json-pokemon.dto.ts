@@ -1,3 +1,5 @@
+import { IsNotEmpty } from 'class-validator';
+
 type NameAndUrl = {
   name: string;
   url: string;
@@ -71,23 +73,57 @@ type Kind = {
 };
 
 export class JsonPokemonDto {
-  abilities: Array<Ability>;
-  base_experience: number;
-  forms: Array<NameAndUrl>;
-  game_indices: Array<GameIndex>;
-  height: number;
-  held_items: Array<Item>;
   id: number;
+
+  @IsNotEmpty()
+  abilities: Array<Ability>;
+
+  @IsNotEmpty()
+  base_experience: number;
+
+  @IsNotEmpty()
+  forms: Array<NameAndUrl>;
+
+  @IsNotEmpty()
+  game_indices: Array<GameIndex>;
+
+  @IsNotEmpty()
+  height: number;
+
+  @IsNotEmpty()
+  held_items: Array<Item>;
+
+  @IsNotEmpty()
   is_default: boolean;
+
+  @IsNotEmpty()
   location_area_encounters: string;
+
+  @IsNotEmpty()
   moves: Array<Move>;
+
+  @IsNotEmpty()
   name: string;
+
+  @IsNotEmpty()
   order: number;
+
+  @IsNotEmpty()
   past_types: Array<PastTypes>;
+
+  @IsNotEmpty()
   species: NameAndUrl;
+
+  @IsNotEmpty()
   sprites: Sprites;
+
+  @IsNotEmpty()
   stats: Array<Stat>;
+
+  @IsNotEmpty()
   types: Array<Kind>;
+
+  @IsNotEmpty()
   weight: number;
 }
 

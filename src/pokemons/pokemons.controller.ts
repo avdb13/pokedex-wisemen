@@ -46,9 +46,11 @@ export class PokemonsController {
   }
 
   @Post('json')
-  createFromJson(@Body() pokemon: Array<JsonPokemonDto> | JsonPokemonDto) {
+  createFromJson(@Body() pokemon: JsonPokemonDto) {
     if (Array.isArray(pokemon)) {
       return;
     }
+
+    this.pokemonsService.create(pokemon);
   }
 }
