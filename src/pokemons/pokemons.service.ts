@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsOrderValue, Repository } from 'typeorm';
 import { pokemons } from './../pokemons';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
@@ -171,8 +171,24 @@ export class PokemonsService {
     return this.pokemonRepository.save(pokemon);
   }
 
-  findAll(): JsonPokemonDto[] {
-    return pokemons;
+  findAll(
+    sortBy?: 'name' | 'id' = 'id',
+    // can be undefined to we make it optional here too
+    order?: FindOptionsOrderValue,
+  ): JsonPokemonDto[] {
+    switch (sortBy) {
+      case 'name':
+        return this.pokemonRepository.find({
+          order: { form: { name: order } },
+        });
+      case 'id':
+        // defaults to ID?
+        return this.pokemonRepository.find({
+          // order: { form: { name: order } },
+        });
+      default:
+        throw Error(`unimplemented`);
+    }
   }
 
   findOne(id: number) {

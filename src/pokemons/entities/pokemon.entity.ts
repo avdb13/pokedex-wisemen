@@ -30,8 +30,9 @@ export class Pokemon {
   @Column()
   base_experience: number;
 
-  @OneToMany(() => Form, (form) => form.pokemon)
-  forms: Relation<Form[]>;
+  // seems to always be of length one so let's inline it
+  @Column(() => NameAndUrl)
+  form: NameAndUrl;
 
   @OneToMany(() => GameIndex, (gameIndex) => gameIndex.pokemon)
   game_indices: Relation<GameIndex[]>;
@@ -86,12 +87,6 @@ export class Ability extends NameAndUrl {
   slot: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.abilities)
-  pokemon: Relation<Pokemon>;
-}
-
-@Entity()
-export class Form extends NameAndUrl {
-  @ManyToOne(() => Pokemon, (pokemon) => pokemon.forms)
   pokemon: Relation<Pokemon>;
 }
 

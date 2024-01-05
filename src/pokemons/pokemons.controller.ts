@@ -14,8 +14,6 @@ import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { PokemonsService } from './pokemons.service';
 
-type ok = 'name-asc' | 'name-desc' | 'id-asc' | 'id-desc';
-
 @Controller('/api/v1/pokemons')
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
@@ -36,10 +34,19 @@ export class PokemonsController {
 
   @Get()
   findAll(@Req() req: Request): JsonPokemonDto[] {
+    const sortOptions = ['name-asc', 'name-desc', 'id-asc', 'id-desc'] as const;
     const sortQuery = req.query.sort;
-    if (sortQuery && typeof sortQuery === string) {
-      sortQuery;
+
+    if (
+      sortQuery &&
+      typeof sortQuery === 'string' &&
+      sortQuery in sortOptions
+    ) {
+      const [sortBy, order] = sortQuery.split('-', 2);
+
+      return this.pokemonsService.findAll(sortBy, order);
     }
+
     return this.pokemonsService.findAll();
   }
 
