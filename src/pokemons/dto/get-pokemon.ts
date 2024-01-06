@@ -2,14 +2,14 @@ class GetPokemonDto {
   id: number;
   name: string;
   sprites: SpriteDto;
-  types: Array<TypesDto>;
+  types: Array<TypeDto>;
 }
 
 class SpriteDto {
   front_default: string;
 }
 
-class TypesDto {
+class TypeDto {
   type: { name: string };
   slot: number;
 }
