@@ -19,11 +19,11 @@ export class TeamsService {
   }
 
   findAll() {
-    return `This action returns all teams`;
+    return this.teamsRepository.find();
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} team`;
+    return this.teamsRepository.findBy({ id });
   }
 
   async update(id: number, pokemonArr: number[]) {

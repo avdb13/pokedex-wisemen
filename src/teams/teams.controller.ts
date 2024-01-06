@@ -15,18 +15,33 @@ import { UpdateTeamDto } from './dto/update-team.dto';
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
-  @Post()
-  create(@Body() createTeamDto: CreateTeamDto) {
-    return this.teamsService.create(createTeamDto);
-  }
-
   @Get()
   findAll() {
     return this.teamsService.findAll();
   }
 
+  @Post()
+  create(@Body() createTeamDto: CreateTeamDto) {
+    return this.teamsService.create(createTeamDto);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      throw new BadRequestException();
+    }
+
+    const result = this.teamsService.findOne(numericId);
+    if (!result) {
+      throw new NotFoundException();
+    }
+
+    return result;
+  }
+
   @Post(':id')
-  async set(@Param('id') id: string, @Body() { pokemons }: UpdateTeamDto) {
+  async update(@Param('id') id: string, @Body() { pokemons }: UpdateTeamDto) {
     const numericId = parseInt(id);
     if (isNaN(numericId)) {
       throw new BadRequestException();
@@ -38,10 +53,5 @@ export class TeamsController {
     }
 
     return result;
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.teamsService.findOne(+id);
   }
 }
