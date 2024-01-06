@@ -1,11 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { CreateTeamDto } from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
+import CreateTeamDto from './dto/create-team.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Team } from './entities/team.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class TeamsService {
-  create(createTeamDto: CreateTeamDto) {
-    return 'This action adds a new team';
+  constructor(
+    @InjectRepository(Team) private teamsRepository: Repository<Team>,
+  ) {}
+
+  create({ name }: CreateTeamDto) {
+    const team = this.teamsRepository.create();
+    team.name = name;
+
+    return this.teamsRepository.save(team);
   }
 
   findAll() {
@@ -16,11 +26,15 @@ export class TeamsService {
     return `This action returns a #${id} team`;
   }
 
-  update(id: number, updateTeamDto: UpdateTeamDto) {
-    return `This action updates a #${id} team`;
-  }
+  async update(id: number, pokemonArr: number[]) {
+    const team = await this.teamsRepository.findOneBy({ id });
 
-  remove(id: number) {
-    return `This action removes a #${id} team`;
+    if (!team) {
+      return null;
+    }
+
+    const newTeam: Team = { ...team, pokemons: pokemonArr };
+    // we could use update but save works just fine
+    return this.teamsRepository.save(newTeam);
   }
 }

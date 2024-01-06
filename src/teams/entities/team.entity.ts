@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class Team {
@@ -8,6 +8,6 @@ export class Team {
   @Column()
   name: string;
 
-  @Column('simple-array')
-  pokemons: number[];
+  @Column('simple-array', { nullable: true })
+  pokemons: number[] = [];
 }

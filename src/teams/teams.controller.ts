@@ -1,9 +1,17 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { TeamsService } from './teams.service';
-import { CreateTeamDto } from './dto/create-team.dto';
+import CreateTeamDto from './dto/create-team.dto';
 import { UpdateTeamDto } from './dto/update-team.dto';
 
-@Controller('teams')
+@Controller('/api/v1/teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
@@ -17,18 +25,23 @@ export class TeamsController {
     return this.teamsService.findAll();
   }
 
+  @Post(':id')
+  async set(@Param('id') id: string, @Body() { pokemons }: UpdateTeamDto) {
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      throw new BadRequestException();
+    }
+
+    const result = await this.teamsService.update(numericId, pokemons);
+    if (!result) {
+      throw new NotFoundException();
+    }
+
+    return result;
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.teamsService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTeamDto: UpdateTeamDto) {
-    return this.teamsService.update(+id, updateTeamDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.teamsService.remove(+id);
   }
 }

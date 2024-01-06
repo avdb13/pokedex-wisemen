@@ -16,11 +16,11 @@ import {
 @Injectable()
 export class PokemonsService {
   constructor(
-    @InjectRepository(Pokemon) private pokemonRepository: Repository<Pokemon>,
+    @InjectRepository(Pokemon) private pokemonsRepository: Repository<Pokemon>,
   ) {}
 
   toEntity(pokemonDto: JsonPokemonDto) {
-    const pokemon = this.pokemonRepository.create();
+    const pokemon = this.pokemonsRepository.create();
 
     const {
       base_experience,
@@ -193,40 +193,40 @@ export class PokemonsService {
 
   async create(pokemonDto: JsonPokemonDto) {
     const entity = this.toEntity(pokemonDto);
-    const partial = await this.pokemonRepository.save(entity);
+    const partial = await this.pokemonsRepository.save(entity);
 
     const pokemon = this.addRelations(pokemonDto, partial);
-    return this.pokemonRepository.save(pokemon);
+    return this.pokemonsRepository.save(pokemon);
   }
 
   async createMany(pokemonDtoArr: JsonPokemonDto[]) {
     let pokemon = pokemonDtoArr.map((pokemonDto) => this.toEntity(pokemonDto));
-    pokemon = await this.pokemonRepository.save(pokemon);
+    pokemon = await this.pokemonsRepository.save(pokemon);
 
     pokemon = pokemon.map((partial, i) =>
       this.addRelations(pokemonDtoArr[i], partial),
     );
-    pokemon = await this.pokemonRepository.save(pokemon);
+    pokemon = await this.pokemonsRepository.save(pokemon);
 
     pokemon = pokemon.map((partial) => this.addDetails(partial));
-    const result = await this.pokemonRepository.save(pokemon);
+    const result = await this.pokemonsRepository.save(pokemon);
 
     return result;
   }
 
   findAll(
     sortBy: 'name' | 'id' = 'id',
-    // can be undefined to we make it optional here too
+    // can be undefined, we make it optional here too
     order?: FindOptionsOrderValue,
   ) {
     switch (sortBy) {
       case 'name':
-        return this.pokemonRepository.find({
+        return this.pokemonsRepository.find({
           order: { form: { name: order } },
         });
       case 'id':
         // defaults to ID?
-        return this.pokemonRepository.find({
+        return this.pokemonsRepository.find({
           // order: { form: { name: order } },
         });
       default:
@@ -235,7 +235,7 @@ export class PokemonsService {
   }
 
   findOne(id: number) {
-    return this.pokemonRepository.findOne({
+    return this.pokemonsRepository.findOne({
       where: { id },
       relations: ['sprites', 'types'],
     });
@@ -250,6 +250,6 @@ export class PokemonsService {
   }
 
   removeAll() {
-    return this.pokemonRepository.clear();
+    return this.pokemonsRepository.clear();
   }
 }
