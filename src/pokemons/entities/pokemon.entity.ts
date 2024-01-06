@@ -136,7 +136,7 @@ export class ItemVersionDetails extends NameAndUrl {
   rarity: number;
 
   @ManyToOne(() => Item, (item) => item.version_details)
-  item: Relation<Item>;
+  item?: Relation<Item>;
 }
 
 @Entity()
@@ -169,7 +169,7 @@ export class MoveVersionDetails {
   version_group: NameAndUrl;
 
   @ManyToOne(() => Move, (move) => move.version_group_details)
-  move: Relation<Move>;
+  move?: Relation<Move>;
 }
 
 @Entity()
@@ -180,6 +180,7 @@ export class Move extends NameAndUrl {
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.moves)
   pokemon: Relation<Pokemon>;
 
+  // optional so that we can save this last
   @OneToMany(() => MoveVersionDetails, (details) => details.move, {
     cascade: true,
     onDelete: 'CASCADE',
@@ -208,7 +209,7 @@ export class PastTypeKind extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => PastType, (past_type) => past_type.types)
-  parent: Relation<PastType>;
+  parent?: Relation<PastType>;
 
   @Column()
   slot: number;

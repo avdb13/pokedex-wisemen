@@ -20,8 +20,31 @@ export class PokemonsService {
   ) {}
 
   toEntity(pokemonDto: JsonPokemonDto) {
-    const pokemon = new Pokemon();
+    const pokemon = this.pokemonRepository.create();
 
+    const {
+      base_experience,
+      height,
+      is_default,
+      location_area_encounters,
+      order,
+      species,
+      weight,
+    } = pokemonDto;
+
+    pokemon.base_experience = base_experience;
+    pokemon.height = height;
+    pokemon.is_default = is_default;
+    pokemon.location_area_encounters = location_area_encounters;
+    pokemon.order = order;
+    pokemon.species = species;
+    pokemon.weight = weight;
+    pokemon.form = pokemonDto.forms[0];
+
+    return pokemon;
+  }
+
+  addRelations(pokemonDto: JsonPokemonDto, pokemon: Pokemon) {
     const abilities = pokemonDto.abilities.map(
       ({ ability, is_hidden, slot }) => ({
         ...ability,
@@ -30,9 +53,6 @@ export class PokemonsService {
         pokemon,
       }),
     );
-    pokemon.abilities = abilities;
-
-    pokemon.form = pokemonDto.forms[0];
 
     const game_indices = pokemonDto.game_indices.map(
       ({ version, game_index }) => ({
@@ -41,7 +61,6 @@ export class PokemonsService {
         pokemon,
       }),
     );
-    pokemon.game_indices = game_indices;
 
     const held_items = pokemonDto.held_items.map(
       ({ item: rest, version_details }) => {
@@ -53,14 +72,12 @@ export class PokemonsService {
           version_details: version_details.map(({ rarity, version }) => ({
             ...version,
             rarity,
-            item,
           })),
         };
 
         return item;
       },
     );
-    pokemon.held_items = held_items;
 
     const moves = pokemonDto.moves.map(
       ({ move: rest, version_group_details }) => {
@@ -71,14 +88,12 @@ export class PokemonsService {
           pokemon,
           version_group_details: version_group_details.map((details) => ({
             ...details,
-            move,
           })),
         };
 
         return move;
       },
     );
-    pokemon.moves = moves;
 
     const { other, versions, ...baseSprites } = pokemonDto.sprites;
 
@@ -124,7 +139,6 @@ export class PokemonsService {
       ...spritesByVersion,
       ...otherSprites,
     ];
-    pokemon.sprites = sprites;
 
     const stats: Array<Stat> = pokemonDto.stats.map(
       ({ stat, effort, base_stat }) => ({
@@ -134,55 +148,76 @@ export class PokemonsService {
         pokemon,
       }),
     );
-    pokemon.stats = stats;
 
     const types: Array<Kind> = pokemonDto.types.map(({ slot, type }) => ({
       ...type,
       slot,
       pokemon,
     }));
+
+    pokemon.abilities = abilities;
+    pokemon.game_indices = game_indices;
+    pokemon.held_items = held_items;
+    pokemon.moves = moves;
+    pokemon.sprites = sprites;
+    pokemon.stats = stats;
     pokemon.types = types;
 
-    const {
-      id,
-      base_experience,
-      height,
-      is_default,
-      location_area_encounters,
-      order,
-      species,
-      weight,
-    } = pokemonDto;
+    return pokemon;
+  }
 
-    pokemon.id = id;
-    pokemon.base_experience = base_experience;
-    pokemon.height = height;
-    pokemon.is_default = is_default;
-    pokemon.location_area_encounters = location_area_encounters;
-    pokemon.order = order;
-    pokemon.species = species;
-    pokemon.weight = weight;
+  addDetails(pokemon: Pokemon) {
+    const moves: Array<Move> = pokemon.moves.map((move) => ({
+      ...move,
+      version_group_details: move.version_group_details.map(
+        ({ move: _, ...rest }) => ({
+          ...rest,
+          move,
+        }),
+      ),
+    }));
+
+    const held_items: Array<Item> = pokemon.held_items.map((item) => ({
+      ...item,
+      version_details: item.version_details.map(({ item: _, ...rest }) => ({
+        ...rest,
+        item,
+      })),
+    }));
+
+    pokemon.held_items = held_items;
+    pokemon.moves = moves;
 
     return pokemon;
   }
 
   async create(pokemonDto: JsonPokemonDto) {
-    const pokemon = this.toEntity(pokemonDto);
+    const entity = this.toEntity(pokemonDto);
+    const partial = await this.pokemonRepository.save(entity);
 
+    const pokemon = this.addRelations(pokemonDto, partial);
     return this.pokemonRepository.save(pokemon);
   }
 
   async createMany(pokemonDtoArr: JsonPokemonDto[]) {
-    const pokemonArr = pokemonDtoArr.map((pokemonDto) =>
-      this.toEntity(pokemonDto),
+    const entities = pokemonDtoArr
+      .slice(0, 3)
+      .map((pokemonDto) => this.toEntity(pokemonDto));
+    const partials = await this.pokemonRepository.save(entities);
+
+    const entitiesWithRelations = partials.map((partial, i) =>
+      this.addRelations(pokemonDtoArr[i], partial),
     );
 
-    await this.pokemonRepository
-      .createQueryBuilder()
-      .insert()
-      .into(Pokemon)
-      .values(pokemonArr)
-      .execute();
+    const partialsWithRelations = await this.pokemonRepository.save(
+      entitiesWithRelations,
+    );
+
+    const entitiesWithDetails = partialsWithRelations.map((partial) =>
+      this.addDetails(partial),
+    );
+
+    return this.pokemonRepository.save(entitiesWithDetails);
   }
 
   findAll(
@@ -223,6 +258,4 @@ export class PokemonsService {
   removeAll() {
     return this.pokemonRepository.clear();
   }
-
-  loadFromJson() {}
 }

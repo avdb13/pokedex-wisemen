@@ -76,8 +76,6 @@ type Kind = {
 };
 
 export class JsonPokemonDto {
-  id: number;
-
   @IsNotEmpty()
   abilities: Array<Ability>;
 
