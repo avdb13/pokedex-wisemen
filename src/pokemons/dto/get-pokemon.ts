@@ -1,4 +1,4 @@
-class PokemonDto {
+class GetPokemonDto {
   id: number;
   name: string;
   sprites: SpriteDto;
@@ -7,7 +7,6 @@ class PokemonDto {
 
 class SpriteDto {
   front_default: string;
-  types: Array<SpriteDto>;
 }
 
 class TypesDto {
@@ -15,4 +14,4 @@ class TypesDto {
   slot: number;
 }
 
-export default PokemonDto;
+export default GetPokemonDto;

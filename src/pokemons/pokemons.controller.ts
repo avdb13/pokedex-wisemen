@@ -1,8 +1,11 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  InternalServerErrorException,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -13,6 +16,7 @@ import { Request } from 'express';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { PokemonsService } from './pokemons.service';
+import GetPokemonDto from './dto/get-pokemon';
 
 @Controller('/api/v1/pokemons')
 export class PokemonsController {
@@ -33,9 +37,13 @@ export class PokemonsController {
   }
 
   @Get()
-  findAll(@Req() req: Request): JsonPokemonDto[] {
+  findAll(@Req() req: Request) {
     const sortOptions = ['name-asc', 'name-desc', 'id-asc', 'id-desc'] as const;
     const sortQuery = req.query.sort;
+
+    if (!sortQuery) {
+      return this.pokemonsService.findAll();
+    }
 
     if (
       sortQuery &&
@@ -46,40 +54,27 @@ export class PokemonsController {
 
       return this.pokemonsService.findAll(sortBy, order);
     }
-
-    return this.pokemonsService.findAll();
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    const resp = await this.pokemonsService.findOne(+id);
-    console.log(resp);
+    const numericId = parseInt(id);
+    if (isNaN(numericId)) {
+      throw new BadRequestException();
+    }
+
+    const pokemon = await this.pokemonsService.findOne(numericId);
+    if (!pokemon) {
+      throw new NotFoundException();
+    }
+
+    const resp = pokemon.toSchema();
+    if (!resp) {
+      throw new InternalServerErrorException();
+    }
+
     return resp;
   }
-  // Pokemon:
-  // type: object
-  // properties:
-  //   id:
-  //     type: integer
-  //   name:
-  //     type: string
-  //   sprites:
-  //     type: object
-  //     properties:
-  //       front_default:
-  //         type: string
-  //   types:
-  //     type: array
-  //     items:
-  //       type: object
-  //       properties:
-  //         type:
-  //           type: object
-  //           properties:
-  //             name:
-  //               type: string
-  //         slot:
-  //           type: number
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePokemonDto: UpdatePokemonDto) {

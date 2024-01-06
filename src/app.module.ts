@@ -19,7 +19,6 @@ import { join } from 'path';
       entities: [join(__dirname, '**', '*.entity.{ts,js}')],
       database: 'pokedex',
       synchronize: true,
-      dropSchema: true,
       logging: true,
     }),
     TeamsModule,

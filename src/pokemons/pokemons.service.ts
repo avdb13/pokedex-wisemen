@@ -200,24 +200,18 @@ export class PokemonsService {
   }
 
   async createMany(pokemonDtoArr: JsonPokemonDto[]) {
-    const entities = pokemonDtoArr
-      .slice(0, 3)
-      .map((pokemonDto) => this.toEntity(pokemonDto));
-    const partials = await this.pokemonRepository.save(entities);
+    let pokemon = pokemonDtoArr.map((pokemonDto) => this.toEntity(pokemonDto));
+    pokemon = await this.pokemonRepository.save(pokemon);
 
-    const entitiesWithRelations = partials.map((partial, i) =>
+    pokemon = pokemon.map((partial, i) =>
       this.addRelations(pokemonDtoArr[i], partial),
     );
+    pokemon = await this.pokemonRepository.save(pokemon);
 
-    const partialsWithRelations = await this.pokemonRepository.save(
-      entitiesWithRelations,
-    );
+    pokemon = pokemon.map((partial) => this.addDetails(partial));
+    const result = await this.pokemonRepository.save(pokemon);
 
-    const entitiesWithDetails = partialsWithRelations.map((partial) =>
-      this.addDetails(partial),
-    );
-
-    return this.pokemonRepository.save(entitiesWithDetails);
+    return result;
   }
 
   findAll(
@@ -242,8 +236,8 @@ export class PokemonsService {
 
   findOne(id: number) {
     return this.pokemonRepository.findOne({
-      relations: ['sprites'],
       where: { id },
+      relations: ['sprites', 'types'],
     });
   }
 
