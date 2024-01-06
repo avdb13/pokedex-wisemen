@@ -19,7 +19,7 @@ export class PokemonsService {
     @InjectRepository(Pokemon) private pokemonRepository: Repository<Pokemon>,
   ) {}
 
-  convert(pokemonDto: JsonPokemonDto) {
+  toEntity(pokemonDto: JsonPokemonDto) {
     const pokemon = new Pokemon();
 
     const abilities = pokemonDto.abilities.map(
@@ -167,14 +167,14 @@ export class PokemonsService {
   }
 
   async create(pokemonDto: JsonPokemonDto) {
-    const pokemon = this.convert(pokemonDto);
+    const pokemon = this.toEntity(pokemonDto);
 
     return this.pokemonRepository.save(pokemon);
   }
 
   async createMany(pokemonDtoArr: JsonPokemonDto[]) {
     const pokemonArr = pokemonDtoArr.map((pokemonDto) =>
-      this.convert(pokemonDto),
+      this.toEntity(pokemonDto),
     );
 
     await this.pokemonRepository
@@ -206,7 +206,10 @@ export class PokemonsService {
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} pokemon`;
+    return this.pokemonRepository.findOne({
+      relations: ['sprites'],
+      where: { id },
+    });
   }
 
   update(id: number, updatePokemonDto: UpdatePokemonDto) {
@@ -215,6 +218,10 @@ export class PokemonsService {
 
   remove(id: number) {
     return `This action removes a #${id} pokemon`;
+  }
+
+  removeAll() {
+    return this.pokemonRepository.clear();
   }
 
   loadFromJson() {}

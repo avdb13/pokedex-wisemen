@@ -51,9 +51,35 @@ export class PokemonsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pokemonsService.findOne(+id);
+  async findOne(@Param('id') id: string) {
+    const resp = await this.pokemonsService.findOne(+id);
+    console.log(resp);
+    return resp;
   }
+  // Pokemon:
+  // type: object
+  // properties:
+  //   id:
+  //     type: integer
+  //   name:
+  //     type: string
+  //   sprites:
+  //     type: object
+  //     properties:
+  //       front_default:
+  //         type: string
+  //   types:
+  //     type: array
+  //     items:
+  //       type: object
+  //       properties:
+  //         type:
+  //           type: object
+  //           properties:
+  //             name:
+  //               type: string
+  //         slot:
+  //           type: number
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePokemonDto: UpdatePokemonDto) {
@@ -63,6 +89,11 @@ export class PokemonsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.pokemonsService.remove(+id);
+  }
+
+  @Delete()
+  removeAll() {
+    return this.pokemonsService.removeAll();
   }
 
   @Post('json')
