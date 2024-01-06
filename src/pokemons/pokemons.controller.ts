@@ -37,23 +37,34 @@ export class PokemonsController {
   }
 
   @Get()
-  findAll(@Req() req: Request) {
-    const sortOptions = ['name-asc', 'name-desc', 'id-asc', 'id-desc'] as const;
+  async findAll(@Req() req: Request) {
+    const sortBy = ['name', 'id'] as const;
+    const sortOrder = ['asc', 'desc'] as const;
+
+    type SortBy = (typeof sortBy)[number];
+    type SortOrder = (typeof sortOrder)[number];
+
     const sortQuery = req.query.sort;
 
+    if (sortQuery && typeof sortQuery === 'string') {
+      const [prefix, suffix] = sortQuery.split('-', 2);
+
+      if (!(prefix in sortBy && suffix in sortOrder)) {
+        throw new BadRequestException();
+      }
+
+      return this.pokemonsService.findAll(
+        prefix as SortBy,
+        suffix as SortOrder,
+      );
+    }
     if (!sortQuery) {
-      return this.pokemonsService.findAll();
+      const pokemonArr = await this.pokemonsService.findAll();
+
+      return pokemonArr.map((p) => p.toSchema());
     }
 
-    if (
-      sortQuery &&
-      typeof sortQuery === 'string' &&
-      sortQuery in sortOptions
-    ) {
-      const [sortBy, order] = sortQuery.split('-', 2);
-
-      return this.pokemonsService.findAll(sortBy, order);
-    }
+    throw new BadRequestException();
   }
 
   @Get(':id')
