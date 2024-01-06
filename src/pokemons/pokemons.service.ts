@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsOrderValue, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
+import { SortOptions } from './pokemons.controller';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import {
@@ -12,6 +13,7 @@ import {
   Stat,
   titles,
 } from './entities/pokemon.entity';
+import { FindOptions } from './pokemons.controller';
 
 @Injectable()
 export class PokemonsService {
@@ -214,24 +216,32 @@ export class PokemonsService {
     return result;
   }
 
-  findAll(
-    sortBy: 'name' | 'id' = 'id',
-    // can be undefined, we make it optional here too
-    order?: FindOptionsOrderValue,
-  ) {
-    switch (sortBy) {
-      case 'name':
-        return this.pokemonsRepository.find({
-          order: { form: { name: order } },
-        });
-      case 'id':
-        // defaults to ID?
-        return this.pokemonsRepository.find({
-          // order: { form: { name: order } },
-        });
-      default:
-        throw Error(`unimplemented`);
+  findAll(options: FindOptions) {
+    const isSort = (x: FindOptions): x is SortOptions => 'order' in x;
+
+    if (isSort(options)) {
+      switch (options.sortBy) {
+        case 'name':
+          return this.pokemonsRepository.find({
+            order: { form: { name: options.order } },
+          });
+        case 'id':
+          // defaults to ID?
+          return this.pokemonsRepository.find({
+            // order: { form: { name: order } },
+          });
+        default:
+          throw Error(`unimplemented`);
+      }
     }
+
+    return this.pokemonsRepository
+      .createQueryBuilder('pokemon')
+      .innerJoin('pokemon.types', 'type')
+      .where(`type.name ILIKE :query OR name ILIKE :query`, {
+        query: `%${options.query}%`,
+      })
+      .getMany();
   }
 
   findOne(id: number) {

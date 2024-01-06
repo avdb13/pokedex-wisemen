@@ -16,7 +16,8 @@ import { Request } from 'express';
 import { JsonPokemonDto } from './dto/json-pokemon.dto';
 import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { PokemonsService } from './pokemons.service';
-import GetPokemonDto from './dto/get-pokemon';
+import { FindOptionsOrderValue } from 'typeorm';
+import { Pokemon } from './entities/pokemon.entity';
 
 @Controller('/api/v1/pokemons')
 export class PokemonsController {
@@ -111,3 +112,47 @@ export class PokemonsController {
     }
   }
 }
+
+@Controller('/api/v1/search')
+export class SearchController {
+  constructor(private readonly pokemonsService: PokemonsService) {}
+
+  @Get()
+  async findAll(@Req() req: Request) {
+    const query = req.query.query;
+    const limitQuery = req.query.limit;
+
+    if (
+      !query ||
+      typeof query !== 'string' ||
+      query.length === 0 ||
+      (limitQuery &&
+        (typeof limitQuery !== 'string' || limitQuery.length === 0))
+    ) {
+      throw new BadRequestException();
+    }
+
+    const limit = limitQuery ? parseInt(limitQuery) : undefined;
+    if (limit && isNaN(limit)) {
+      throw new BadRequestException();
+    }
+
+    return this.pokemonsService.findAll({ limit, query });
+  }
+}
+
+// useless, we need to define each switch separately anyway
+// type SortBy = keyof Pokemon extends infer K extends number | string ? K : never;
+
+export type SortOptions = {
+  // sortBy: SortBy;
+  sortBy?: string;
+  // do we want this or our own union?
+  order?: FindOptionsOrderValue;
+};
+export type SearchOptions = {
+  query: string;
+  limit?: number;
+};
+
+export type FindOptions = SortOptions | SearchOptions;
