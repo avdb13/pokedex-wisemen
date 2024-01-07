@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 
+// useless, we need to define each switch separately anyway
+// type SortBy = keyof Pokemon extends infer K extends number | string ? K : never;
+
 const sortByOptions = ['name', 'id'] as const;
 const orderOptions = ['asc', 'desc'] as const;
 
@@ -20,8 +23,10 @@ export type SearchOptions = {
   limit?: number;
 };
 
-export interface RequestWithFindOptions extends Request {
-  findOptions?: SearchOptions | PokemonOptions;
+export type FindOptions = PokemonOptions | SearchOptions;
+
+export interface RequestWithFindOptions<T extends FindOptions> extends Request {
+  findOptions?: T;
 }
 
 export class QueryGuard implements CanActivate {
