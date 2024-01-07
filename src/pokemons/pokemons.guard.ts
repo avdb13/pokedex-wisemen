@@ -25,32 +25,25 @@ export type SearchOptions = {
 
 export type FindOptions = PokemonOptions | SearchOptions;
 
-export interface RequestWithFindOptions<T extends FindOptions> extends Request {
-  findOptions?: T;
+export interface RequestWithFindOptions extends Request {
+  findOptions?: FindOptions;
 }
 
-export class QueryGuard implements CanActivate {
+const isStr = (s: any): s is string => typeof s === 'string';
+const isNum = (n: any): n is number => isStr(n) && !isNaN(parseInt(n));
+
+export class PokemonGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const isStr = (s: any): s is string => typeof s === 'string';
+    let req = context.switchToHttp().getRequest<Request>();
+    const { sort, limit, offset } = req.query;
 
-    const req = context.switchToHttp().getRequest<RequestWithFindOptions>();
-    const { sort, query, limit, offset } = req.query;
-
-    if (query) {
-      if (!isStr(query) || (limit && isStr(limit) && isNaN(parseInt(limit)))) {
-        throw new BadRequestException();
-      }
-
-      req.findOptions = { query, limit } as SearchOptions;
-      return true;
-    }
-
+    // can we do better?
     const [sortBy, order] =
       sort && isStr(sort) ? sort.split('-', 2) : [undefined, undefined];
 
     if (sort) {
       if (isStr(sort)) {
-        // check this
+        // check this later
         if (!(sortBy! in sortByOptions && order! in orderOptions)) {
           throw new BadRequestException();
         }
@@ -60,7 +53,37 @@ export class QueryGuard implements CanActivate {
     }
 
     if (limit) {
-      if (!isStr(limit) || isNaN(parseInt(limit))) {
+      if (!isNum(limit)) {
+        throw new BadRequestException();
+      }
+    }
+
+    if (offset) {
+      if (!isNum(offset)) {
+        throw new BadRequestException();
+      }
+    }
+
+    req = {
+      ...req,
+      findOptions: { sortBy, order, limit, offset },
+    } as RequestWithFindOptions;
+
+    return true;
+  }
+}
+
+export class SearchGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    let req = context.switchToHttp().getRequest<Request>();
+    const { query, limit, offset } = req.query;
+
+    if (!query || !isStr(query)) {
+      throw new BadRequestException();
+    }
+
+    if (limit) {
+      if (isNum(limit)) {
         throw new BadRequestException();
       }
     }
@@ -71,7 +94,11 @@ export class QueryGuard implements CanActivate {
       }
     }
 
-    req.findOptions = { sortBy, order, limit, offset } as PokemonOptions;
+    req = {
+      ...req,
+      findOptions: { query, limit, offset } as SearchOptions,
+    } as RequestWithFindOptions;
+
     return true;
   }
 }
