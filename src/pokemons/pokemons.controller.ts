@@ -52,6 +52,7 @@ export class PokemonsController {
     if (!pokemon) {
       throw new NotFoundException();
     }
+    console.log(pokemon.form);
 
     return pokemon;
   }

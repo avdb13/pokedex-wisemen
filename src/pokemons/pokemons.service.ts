@@ -225,6 +225,7 @@ export class PokemonsService {
 
       return this.pokemonsRepository
         .createQueryBuilder('pokemon')
+        .innerJoin('pokemon.sprites', 'sprite')
         .innerJoin('pokemon.types', 'type')
         .where(`type.name ILIKE :query OR name ILIKE :query`, {
           query: `%${query}%`,
@@ -241,6 +242,7 @@ export class PokemonsService {
           ? { id: direction }
           : undefined;
     const opts: FindManyOptions = {
+      relations: ['sprites', 'types'],
       order,
       take,
       skip,
@@ -252,7 +254,14 @@ export class PokemonsService {
   findOne(id: number) {
     return this.pokemonsRepository.findOne({
       where: { id },
-      relations: ['sprites', 'types'],
+      relations: [
+        'sprites',
+        'types',
+        'moves',
+        'stats',
+        'abilities',
+        'moves.version_group_details',
+      ],
     });
   }
 

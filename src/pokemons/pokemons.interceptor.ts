@@ -23,6 +23,7 @@ export class PokemonInterceptor
   ): Observable<GetPokemonDto> {
     return next.handle().pipe(
       map((pokemon) => {
+        console.log(pokemon.id);
         const {
           id,
           form: { name },
@@ -62,6 +63,7 @@ export class PokemonDetailsInterceptor
   ): Observable<GetPokemonDetailsDto> {
     return next.handle().pipe(
       map((pokemon) => {
+        console.log(pokemon.id);
         const {
           id,
           form: { name },
@@ -76,14 +78,16 @@ export class PokemonDetailsInterceptor
           abilities,
         } = pokemon;
 
+        console.log(pokemon);
         const sprite = tooManySprites.find(isBaseSprite);
+
         if (!sprite) {
           throw new InternalServerErrorException();
         }
 
         const sprites: SpriteMap = { ...(sprite as SpriteMap) };
 
-        return {
+        const ok = {
           id,
           name,
           sprites,
@@ -118,6 +122,8 @@ export class PokemonDetailsInterceptor
           })),
           form: name,
         } as GetPokemonDetailsDto;
+
+        return ok;
       }),
     );
   }
