@@ -44,9 +44,9 @@ class StatDto {
 }
 
 class AbilityDto {
-  stat: string;
-  base_stat: number;
-  effort: number;
+  ability: string;
+  is_hidden: boolean;
+  slot: number;
 }
 
 class MoveDetailsDto {

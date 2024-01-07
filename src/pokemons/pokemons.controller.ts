@@ -61,6 +61,11 @@ export class PokemonsController {
       this.pokemonsService.create(body);
     }
   }
+
+  @Delete()
+  removeAll() {
+    return this.pokemonsService.removeAll();
+  }
 }
 
 @Controller('/api/v1/search')
@@ -103,19 +108,5 @@ export class PokemonDetailsController {
     }
 
     return pokemon;
-  }
-
-  @Delete()
-  removeAll() {
-    return this.pokemonsService.removeAll();
-  }
-
-  @Post('json')
-  createFromJson(@Body() body: JsonPokemonDto | Array<JsonPokemonDto>) {
-    if (Array.isArray(body)) {
-      this.pokemonsService.createMany(body);
-    } else {
-      this.pokemonsService.create(body);
-    }
   }
 }

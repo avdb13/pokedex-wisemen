@@ -215,30 +215,30 @@ export class PastTypeKind extends NameAndUrl {
   slot: number;
 }
 
-abstract class SpriteMap {
-  @Column({ type: 'varchar', nullable: true, default: null })
-  front_default?: string | null;
+export abstract class SpriteMap {
+  @Column({ type: 'varchar' })
+  front_default: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  front_female?: string | null;
+  front_female?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  front_shiny?: string | null;
+  front_shiny?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  front_shiny_female?: string | null;
+  front_shiny_female?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  back_default?: string | null;
+  back_default?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  back_female?: string | null;
+  back_female?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  back_shiny?: string | null;
+  back_shiny?: string;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  back_shiny_female?: string | null;
+  back_shiny_female?: string;
 }
 
 @Entity()
@@ -250,7 +250,7 @@ export class Sprite extends SpriteMap {
   pokemon: Relation<Pokemon>;
 
   @Column({ type: 'varchar', nullable: true, default: null })
-  title?: string | null;
+  title?: string;
 
   @Column({ nullable: true, default: false })
   is_other?: boolean;
