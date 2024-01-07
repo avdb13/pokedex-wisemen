@@ -216,7 +216,7 @@ export class PokemonsService {
     return result;
   }
 
-  findAll(options: FindOptions) {
+  findAll(options?: FindOptions) {
     const isSort = (x: FindOptions): x is SortOptions => 'order' in x;
 
     if (isSort(options)) {
@@ -226,12 +226,11 @@ export class PokemonsService {
             order: { form: { name: options.order } },
           });
         case 'id':
+        default:
           // defaults to ID?
           return this.pokemonsRepository.find({
             // order: { form: { name: order } },
           });
-        default:
-          throw Error(`unimplemented`);
       }
     }
 
