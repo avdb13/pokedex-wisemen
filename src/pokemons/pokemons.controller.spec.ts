@@ -22,7 +22,7 @@ describe('PokemonsController', () => {
           entities: [join(__dirname, '**', '*.entity.{ts,js}')],
           database: 'pokedex',
           synchronize: true,
-          logging: true,
+          logging: ['error'],
         }),
         TypeOrmModule.forFeature([Pokemon]),
       ],
@@ -36,7 +36,7 @@ describe('PokemonsController', () => {
     controller.importFromJson(pokemonsJson as CreatePokemonDto[]);
   });
 
-  describe('GET /', async () => {
+  it('GET /', async () => {
     const ok = await controller.findOne(1);
     console.log(ok);
   });
