@@ -19,7 +19,10 @@ import {
   RequestWithFindOptions,
   SearchGuard,
 } from './pokemons.guard';
-import { PokemonInterceptor } from './pokemons.interceptor';
+import {
+  PokemonDetailsInterceptor,
+  PokemonInterceptor,
+} from './pokemons.interceptor';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 
 @Controller('/api/v1/pokemons')
@@ -36,7 +39,7 @@ export class PokemonsController {
   }
 
   @Get(':id')
-  @UseInterceptors(PokemonInterceptor)
+  @UseInterceptors(PokemonDetailsInterceptor)
   async findOne(
     @Param(
       'id',
@@ -87,26 +90,10 @@ export class PokemonDetailsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
+  @UseInterceptors(PokemonInterceptor)
   async findAll(@Req() req: RequestWithFindOptions) {
     const opts = req.findOptions;
 
     return this.pokemonsService.findAll(opts);
-  }
-
-  @Get(':id')
-  async findOne(
-    @Param(
-      'id',
-      new ParseIntPipe({ errorHttpStatusCode: HttpStatus.BAD_REQUEST }),
-    )
-    id: number,
-  ) {
-    const pokemon = await this.pokemonsService.findOne(id);
-
-    if (!pokemon) {
-      throw new NotFoundException();
-    }
-
-    return pokemon;
   }
 }

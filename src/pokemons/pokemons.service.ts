@@ -7,11 +7,12 @@ import {
   Move,
   Pokemon,
   Sprite,
+  SpriteMap,
   Stat,
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
-import { CreatePokemonDto } from './dto/create-pokemon.dto';
+import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
@@ -106,23 +107,23 @@ export class PokemonsService {
           spriteMap.animated
             ? [
                 {
-                  ...spriteMap,
+                  ...(spriteMap as NoNull<SpriteMap>),
                   pokemon,
-                  title: title in titles ? title : null,
+                  title: title in titles ? title : undefined,
                   is_icons: title === 'icons',
                 },
                 {
-                  ...spriteMap.animated,
+                  ...(spriteMap.animated as NoNull<SpriteMap>),
                   is_animated: true,
                   pokemon,
-                  title: title in titles ? title : null,
+                  title: title in titles ? title : undefined,
                 },
               ]
             : [
                 {
-                  ...spriteMap,
+                  ...(spriteMap as NoNull<SpriteMap>),
                   pokemon,
-                  title: title in titles ? title : null,
+                  title: title in titles ? title : undefined,
                   is_icons: title === 'icons',
                 },
               ],
@@ -131,7 +132,7 @@ export class PokemonsService {
 
     const otherSprites: Array<Sprite> = Object.entries(other).map(
       ([_generation, spriteMap]) => ({
-        ...spriteMap,
+        ...(spriteMap as NoNull<SpriteMap>),
         pokemon,
         isOther: true,
       }),
@@ -217,6 +218,7 @@ export class PokemonsService {
     return result;
   }
 
+  // show 10 results if no limit was defined
   findAll(findOpts: FindOptions = {}) {
     if (isSearchOptions(findOpts)) {
       const { query, limit } = findOpts;
