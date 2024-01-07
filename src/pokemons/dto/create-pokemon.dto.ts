@@ -75,7 +75,7 @@ type Kind = {
   type: NameAndUrl;
 };
 
-export class JsonPokemonDto {
+export class CreatePokemonDto {
   @IsNotEmpty()
   abilities: Array<Ability>;
 
@@ -128,4 +128,4 @@ export class JsonPokemonDto {
   weight: number;
 }
 
-export { Ability as JsonAbilityDto };
+export { Ability as CreateAbilityDto };

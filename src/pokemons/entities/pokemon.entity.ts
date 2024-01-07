@@ -8,7 +8,6 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import GetPokemonDto from '../dto/get-pokemon';
 
 abstract class NameAndUrl {
   @Column()
@@ -99,31 +98,6 @@ export class Pokemon {
 
   @Column()
   weight: number;
-
-  toSchema() {
-    const {
-      id,
-      form: { name },
-      sprites: extendedSprites,
-      types: extendedTypes,
-    } = this;
-
-    const isBaseSprite = (s: Sprite) => (s) =>
-      !s.is_other && !s.is_animated && !s.is_icons && !s.title;
-    const sprite = extendedSprites.find(isBaseSprite);
-    if (!sprite || !sprite.front_default) {
-      return null;
-    }
-
-    const sprites = { front_default: sprite.front_default };
-
-    const types = extendedTypes.map(({ slot, name }) => ({
-      slot,
-      type: { name },
-    }));
-
-    return { id, name, sprites, types };
-  }
 }
 
 @Entity()

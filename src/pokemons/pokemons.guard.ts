@@ -32,7 +32,7 @@ export interface RequestWithFindOptions extends Request {
 const isStr = (s: any): s is string => typeof s === 'string';
 const isNum = (n: any): n is number => isStr(n) && !isNaN(parseInt(n));
 
-export class PokemonGuard implements CanActivate {
+export class PokemonsGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     let req = context.switchToHttp().getRequest<Request>();
     const { sort, limit, offset } = req.query;

@@ -1,44 +1,42 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
   HttpStatus,
-  InternalServerErrorException,
   NotFoundException,
   Param,
   ParseIntPipe,
-  Patch,
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 
-import { JsonPokemonDto } from './dto/json-pokemon.dto';
-import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import { PokemonsService } from './pokemons.service';
 import {
-  PokemonOptions,
-  QueryGuard,
+  PokemonsGuard,
   RequestWithFindOptions,
-  SearchOptions,
+  SearchGuard,
 } from './pokemons.guard';
+import { PokemonInterceptor } from './pokemons.interceptor';
+import { CreatePokemonDto } from './dto/create-pokemon.dto';
 
 @Controller('/api/v1/pokemons')
-@UseGuards(QueryGuard)
+@UseGuards(PokemonsGuard)
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
-  async findAll(@Req() req: RequestWithFindOptions<PokemonOptions>) {
+  @UseInterceptors(PokemonInterceptor)
+  async findAll(@Req() req: RequestWithFindOptions) {
     const options = req.findOptions;
 
-    // transform later
     return this.pokemonsService.findAll(options);
   }
 
   @Get(':id')
+  @UseInterceptors(PokemonInterceptor)
   async findOne(
     @Param(
       'id',
@@ -47,6 +45,7 @@ export class PokemonsController {
     id: number,
   ) {
     const pokemon = await this.pokemonsService.findOne(id);
+
     if (!pokemon) {
       throw new NotFoundException();
     }
@@ -55,7 +54,7 @@ export class PokemonsController {
   }
 
   @Post('json')
-  importFromJson(@Body() body: JsonPokemonDto | Array<JsonPokemonDto>) {
+  importFromJson(@Body() body: CreatePokemonDto | Array<CreatePokemonDto>) {
     if (Array.isArray(body)) {
       this.pokemonsService.createMany(body);
     } else {
@@ -65,30 +64,25 @@ export class PokemonsController {
 }
 
 @Controller('/api/v1/search')
-@UseGuards(QueryGuard)
+@UseGuards(SearchGuard)
 export class SearchController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
-  async findAll(@Req() req: RequestWithFindOptions<PokemonOptions>) {
+  async findAll(@Req() req: RequestWithFindOptions) {
     const opts = req.findOptions;
-
-    // !query ||
-    // typeof query !== 'string' ||
-    // query.length === 0 ||
-    // (limitQuery &&
-    //   (typeof limitQuery !== 'string' || limitQuery.length === 0))
 
     return this.pokemonsService.findAll(opts);
   }
 }
 
 @Controller('/api/v2/pokemons')
+@UseGuards(PokemonsGuard)
 export class PokemonDetailsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
-  async findAll(@Req() req: RequestWithFindOptions<SearchOptions>) {
+  async findAll(@Req() req: RequestWithFindOptions) {
     const opts = req.findOptions;
 
     return this.pokemonsService.findAll(opts);
@@ -103,16 +97,12 @@ export class PokemonDetailsController {
     id: number,
   ) {
     const pokemon = await this.pokemonsService.findOne(id);
+
     if (!pokemon) {
       throw new NotFoundException();
     }
 
-    const resp = pokemon.toSchema();
-    if (!resp) {
-      throw new InternalServerErrorException();
-    }
-
-    return resp;
+    return pokemon;
   }
 
   @Delete()

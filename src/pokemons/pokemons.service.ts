@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository } from 'typeorm';
-import { JsonPokemonDto } from './dto/json-pokemon.dto';
-import { UpdatePokemonDto } from './dto/update-pokemon.dto';
 import {
   Item,
   Kind,
@@ -12,7 +10,8 @@ import {
   Stat,
   titles,
 } from './entities/pokemon.entity';
-import { FindOptions, PokemonOptions, SearchOptions } from './pokemons.guard';
+import { FindOptions, SearchOptions } from './pokemons.guard';
+import { CreatePokemonDto } from './dto/create-pokemon.dto';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
@@ -23,7 +22,7 @@ export class PokemonsService {
     @InjectRepository(Pokemon) private pokemonsRepository: Repository<Pokemon>,
   ) {}
 
-  toEntity(pokemonDto: JsonPokemonDto) {
+  private toEntity(pokemonDto: CreatePokemonDto) {
     const pokemon = this.pokemonsRepository.create();
 
     const {
@@ -48,7 +47,7 @@ export class PokemonsService {
     return pokemon;
   }
 
-  addRelations(pokemonDto: JsonPokemonDto, pokemon: Pokemon) {
+  private addRelations(pokemonDto: CreatePokemonDto, pokemon: Pokemon) {
     const abilities = pokemonDto.abilities.map(
       ({ ability, is_hidden, slot }) => ({
         ...ability,
@@ -170,7 +169,7 @@ export class PokemonsService {
     return pokemon;
   }
 
-  addDetails(pokemon: Pokemon) {
+  private addDetails(pokemon: Pokemon) {
     const moves: Array<Move> = pokemon.moves.map((move) => ({
       ...move,
       version_group_details: move.version_group_details.map(
@@ -195,7 +194,7 @@ export class PokemonsService {
     return pokemon;
   }
 
-  async create(pokemonDto: JsonPokemonDto) {
+  async create(pokemonDto: CreatePokemonDto) {
     const entity = this.toEntity(pokemonDto);
     const partial = await this.pokemonsRepository.save(entity);
 
@@ -203,7 +202,7 @@ export class PokemonsService {
     return this.pokemonsRepository.save(pokemon);
   }
 
-  async createMany(pokemonDtoArr: JsonPokemonDto[]) {
+  async createMany(pokemonDtoArr: CreatePokemonDto[]) {
     let pokemon = pokemonDtoArr.map((pokemonDto) => this.toEntity(pokemonDto));
     pokemon = await this.pokemonsRepository.save(pokemon);
 
@@ -218,7 +217,7 @@ export class PokemonsService {
     return result;
   }
 
-  findAll(findOpts: FindOptions) {
+  findAll(findOpts: FindOptions = {}) {
     if (isSearchOptions(findOpts)) {
       const { query, limit } = findOpts;
 
@@ -244,6 +243,7 @@ export class PokemonsService {
       take,
       skip,
     };
+
     this.pokemonsRepository.find(opts);
   }
 
@@ -252,14 +252,6 @@ export class PokemonsService {
       where: { id },
       relations: ['sprites', 'types'],
     });
-  }
-
-  update(id: number, updatePokemonDto: UpdatePokemonDto) {
-    return `This action updates a #${id} pokemon`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} pokemon`;
   }
 
   removeAll() {
