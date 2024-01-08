@@ -52,12 +52,8 @@ export class PokemonsController {
     if (!pokemon) {
       throw new NotFoundException();
     }
-    console.log(pokemon.form);
 
-    return {
-      ...pokemon,
-      moves: pokemon.moves.map((m) => ({ ...m, version_group_details: [] })),
-    };
+    return pokemon;
   }
 
   @Post('json')

@@ -113,6 +113,7 @@ export class Ability extends NameAndUrl {
   slot: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.abilities)
+  @Index()
   pokemon: Relation<Pokemon>;
 }
 
@@ -125,6 +126,7 @@ export class GameIndex extends NameAndUrl {
   value: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.game_indices)
+  @Index()
   pokemon: Relation<Pokemon>;
 }
 
@@ -137,6 +139,7 @@ export class ItemVersionDetails extends NameAndUrl {
   rarity: number;
 
   @ManyToOne(() => Item, (item) => item.version_details)
+  @Index()
   item?: Relation<Item>;
 }
 
@@ -146,6 +149,7 @@ export class Item extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.held_items)
+  @Index()
   pokemon: Relation<Pokemon>;
 
   @OneToMany(() => ItemVersionDetails, (details) => details.item, {
@@ -180,6 +184,7 @@ export class Move extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.moves)
+  @Index()
   pokemon: Relation<Pokemon>;
 
   // optional so that we can save this last
@@ -202,6 +207,7 @@ export class PastType extends NameAndUrl {
   types: Relation<PastTypeKind[]>;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.past_types)
+  @Index()
   pokemon: Relation<Pokemon>;
 }
 
@@ -211,6 +217,7 @@ export class PastTypeKind extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => PastType, (past_type) => past_type.types)
+  @Index()
   parent?: Relation<PastType>;
 
   @Column()
@@ -249,6 +256,7 @@ export class Sprite extends SpriteMap {
   id?: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
+  @Index()
   pokemon: Relation<Pokemon>;
 
   @Column({ type: 'varchar', nullable: true, default: null })
@@ -270,6 +278,7 @@ export class Kind extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.types)
+  @Index()
   pokemon: Relation<Pokemon>;
 
   @Column()
@@ -282,6 +291,7 @@ export class Stat extends NameAndUrl {
   id?: number;
 
   @ManyToOne(() => Pokemon, (pokemon) => pokemon.sprites)
+  @Index()
   pokemon: Relation<Pokemon>;
 
   @Column()

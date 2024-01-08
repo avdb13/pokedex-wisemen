@@ -81,7 +81,6 @@ export class PokemonDetailsInterceptor
       abilities,
     } = pokemon;
 
-    console.log(pokemon);
     const sprite = tooManySprites.find(isBaseSprite);
 
     if (!sprite) {

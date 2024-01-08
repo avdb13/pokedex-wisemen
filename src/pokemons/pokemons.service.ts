@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository } from 'typeorm';
+
+import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 import {
   Item,
   Kind,
   Move,
+  MoveVersionDetails,
   Pokemon,
   Sprite,
   SpriteMap,
@@ -12,10 +15,27 @@ import {
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
-import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
+
+// very nasty bug that doesn't properly expand embedded entities
+// https://github.com/typeorm/typeorm/issues/8112
+type EmbeddedMoveVersionDetails = Pick<
+  MoveVersionDetails,
+  'level_learned_at' | 'move' | 'id'
+> & {
+  moveLearnMethodUrl: string;
+  moveLearnMethodName: string;
+  versionGroupName: string;
+  versionGroupUrl: string;
+};
+
+type QueryResult = Pokemon & {
+  moves: Move & {
+    version_group_details: EmbeddedMoveVersionDetails;
+  };
+};
 
 @Injectable()
 export class PokemonsService {
@@ -23,7 +43,7 @@ export class PokemonsService {
     @InjectRepository(Pokemon) private pokemonsRepository: Repository<Pokemon>,
   ) {}
 
-  private toEntity(pokemonDto: CreatePokemonDto) {
+  toEntity(pokemonDto: CreatePokemonDto) {
     const pokemon = this.pokemonsRepository.create();
 
     const {
@@ -219,18 +239,19 @@ export class PokemonsService {
   }
 
   // show 10 results if no limit was defined
-  findAll(findOpts: FindOptions = {}) {
+  findAll(findOpts: FindOptions = {}): Promise<Pokemon[]> {
     if (isSearchOptions(findOpts)) {
       const { query, limit } = findOpts;
 
       return this.pokemonsRepository
         .createQueryBuilder('pokemon')
-        .innerJoin('pokemon.sprites', 'sprite')
-        .innerJoin('pokemon.types', 'type')
+        .leftJoin('pokemon.sprites', 'sprite')
+        .leftJoin('pokemon.types', 'type')
         .where(`type.name ILIKE :query OR name ILIKE :query`, {
           query: `%${query}%`,
         })
-        .take(limit);
+        .take(limit)
+        .execute();
     }
 
     const { sortBy, order: direction, limit: take, offset: skip } = findOpts;
@@ -251,18 +272,34 @@ export class PokemonsService {
     return this.pokemonsRepository.find(opts);
   }
 
-  findOne(id: number) {
-    return this.pokemonsRepository.findOne({
-      where: { id },
-      relations: [
-        'sprites',
-        'types',
-        'moves',
-        'stats',
-        'abilities',
-        // 'moves.version_group_details',
-      ],
-    });
+  async findOne(id: number) {
+    const pokemon = await this.pokemonsRepository
+      .createQueryBuilder('pokemon')
+      .where({ id })
+      .leftJoinAndSelect('pokemon.sprites', 'sprite')
+      .leftJoinAndSelect('pokemon.types', 'type')
+      .leftJoinAndSelect('pokemon.stats', 'stat')
+      .leftJoinAndSelect('pokemon.abilities', 'ability')
+      .getOne();
+
+    if (!pokemon) {
+      return null;
+    }
+
+    // querying moves separately is faster
+    const rest = await this.pokemonsRepository
+      .createQueryBuilder('pokemon')
+      .where({ id })
+      .leftJoinAndSelect('pokemon.moves', 'move')
+      .leftJoinAndSelect('move.version_group_details', 'version_group_details')
+      .addSelect([
+        'version_group_details.level_learned_at',
+        'version_group_details.moveLearnMethodName',
+        'version_group_details.moveLearnMethodUrl',
+      ])
+      .getOne();
+
+    return { ...pokemon, moves: rest?.moves };
   }
 
   removeAll() {
