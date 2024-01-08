@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
 import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
 import { Pokemon, Sprite, SpriteMap } from './entities/pokemon.entity';
 
-const isBaseSprite = (s: Sprite) =>
+export const isBaseSprite = (s: Sprite) =>
   !s.is_other && !s.is_animated && !s.is_icons && !s.title;
 
 type MaybeArray<T> = T | T[];
@@ -87,7 +87,11 @@ export class PokemonDetailsInterceptor
       throw new InternalServerErrorException();
     }
 
-    const sprites: SpriteMap = { ...(sprite as SpriteMap) };
+    const sprites: SpriteMap = Object.keys(sprite).reduce(
+      (init, k, i) =>
+        k in SpriteMap ? { ...init, [k]: Object.values(sprite)[i] } : init,
+      {} as SpriteMap,
+    );
 
     const ok = {
       id,

@@ -7,7 +7,6 @@ import {
   Item,
   Kind,
   Move,
-  MoveVersionDetails,
   Pokemon,
   Sprite,
   SpriteMap,
@@ -19,24 +18,6 @@ import { FindOptions, SearchOptions } from './pokemons.guard';
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
 
-// very nasty bug that doesn't properly expand embedded entities
-// https://github.com/typeorm/typeorm/issues/8112
-type EmbeddedMoveVersionDetails = Pick<
-  MoveVersionDetails,
-  'level_learned_at' | 'move' | 'id'
-> & {
-  moveLearnMethodUrl: string;
-  moveLearnMethodName: string;
-  versionGroupName: string;
-  versionGroupUrl: string;
-};
-
-type QueryResult = Pokemon & {
-  moves: Move & {
-    version_group_details: EmbeddedMoveVersionDetails;
-  };
-};
-
 @Injectable()
 export class PokemonsService {
   constructor(
@@ -44,7 +25,7 @@ export class PokemonsService {
   ) {}
 
   toEntity(pokemonDto: CreatePokemonDto) {
-    const pokemon = this.pokemonsRepository.create();
+    const pokemon = new Pokemon();
 
     const {
       base_experience,
@@ -68,7 +49,7 @@ export class PokemonsService {
     return pokemon;
   }
 
-  private addRelations(pokemonDto: CreatePokemonDto, pokemon: Pokemon) {
+  addRelations(pokemonDto: CreatePokemonDto, pokemon: Pokemon) {
     const abilities = pokemonDto.abilities.map(
       ({ ability, is_hidden, slot }) => ({
         ...ability,
@@ -190,7 +171,7 @@ export class PokemonsService {
     return pokemon;
   }
 
-  private addDetails(pokemon: Pokemon) {
+  addDetails(pokemon: Pokemon) {
     const moves: Array<Move> = pokemon.moves.map((move) => ({
       ...move,
       version_group_details: move.version_group_details.map(
@@ -287,6 +268,8 @@ export class PokemonsService {
     }
 
     // querying moves separately is faster
+    // also due to a bug that doesn't properly expand embedded entities
+    // https://github.com/typeorm/typeorm/issues/8112
     const rest = await this.pokemonsRepository
       .createQueryBuilder('pokemon')
       .where({ id })
@@ -299,7 +282,7 @@ export class PokemonsService {
       ])
       .getOne();
 
-    return { ...pokemon, moves: rest?.moves };
+    return { ...pokemon, moves: rest?.moves } as Pokemon;
   }
 
   removeAll() {
