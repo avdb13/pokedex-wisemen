@@ -54,7 +54,10 @@ export class PokemonsController {
     }
     console.log(pokemon.form);
 
-    return pokemon;
+    return {
+      ...pokemon,
+      moves: pokemon.moves.map((m) => ({ ...m, version_group_details: [] })),
+    };
   }
 
   @Post('json')

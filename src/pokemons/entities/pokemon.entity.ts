@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Index,
 } from 'typeorm';
 
 abstract class NameAndUrl {
@@ -169,6 +170,7 @@ export class MoveVersionDetails {
   version_group: NameAndUrl;
 
   @ManyToOne(() => Move, (move) => move.version_group_details)
+  @Index()
   move?: Relation<Move>;
 }
 

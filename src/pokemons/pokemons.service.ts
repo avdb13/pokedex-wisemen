@@ -248,7 +248,7 @@ export class PokemonsService {
       skip,
     };
 
-    this.pokemonsRepository.find(opts);
+    return this.pokemonsRepository.find(opts);
   }
 
   findOne(id: number) {
@@ -260,7 +260,7 @@ export class PokemonsService {
         'moves',
         'stats',
         'abilities',
-        'moves.version_group_details',
+        // 'moves.version_group_details',
       ],
     });
   }
