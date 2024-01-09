@@ -254,29 +254,23 @@ describe('SearchController', () => {
       it('query', async () => {
         request
           .get('/api/v1/search')
-          .query({ query: 'arman' })
+          .query({ query: 'arman', limit: 2 })
           .expect(200)
-          .expect(pokemons.filter((p) => p.name.indexOf('arman') >= 0));
+          .expect(
+            pokemons.filter((p) => p.name.indexOf('arman') >= 0).slice(0, 2),
+          );
 
         request
-          .get('/api/v1/pokemons')
-          .query({ sort: 'id-desc' })
+          .get('/api/v1/search')
+          .query({ query: 'notapokemon' })
           .expect(200)
-          .expect(pokemons.filter((p) => p.name.indexOf('arman') >= 0));
+          .expect([]);
       }, 30_000);
     });
 
     describe('400 BAD_REQUEST', () => {
-      it('sort', async () => {
-        const fromJson = pokemons.map(toEntity).map(toPokemon);
-        const fromDb = (await service.findAll()).map(toPokemon);
-
-        expect(fromJson).toEqual(fromDb);
-
-        request
-          .get('/api/v1/pokemons')
-          .query({ sort: 'weight-desc' })
-          .expect(400);
+      it('query', async () => {
+        request.get('/api/v1/search').expect(400);
         // .expect();
       }, 30_000);
     });

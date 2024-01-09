@@ -14,28 +14,24 @@ import {
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
-import { inspect } from 'util';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
 
 // this is so we can return the relations with the ID
-type PickArrayChildren<P, O extends string> = {
+type PickArrayChildren<P> = {
   [K in keyof P as P[K] extends Array<infer _> ? K : never]: P[K] extends Array<
     infer I
   >
-    ? Array<Omit<I, O>>
+    ? Array<I>
     : never;
 };
 type UnionMap<R extends object> = {
-  [K in keyof R as string]: Record<number, R[K]>;
+  [K in keyof R as string]: R[K];
 };
 
-type Relations = PickArrayChildren<Omit<Pokemon, 'id'>, 'pokemon'>;
+type Relations = PickArrayChildren<Omit<Pokemon, 'id'>>;
 type RelationMap = UnionMap<Relations>;
-
-type Details = PickArrayChildren<Move & Item, 'move' | 'item'>;
-type DetailsMap = UnionMap<Details>;
 
 @Injectable()
 export class PokemonsService {
@@ -86,11 +82,11 @@ export class PokemonsService {
         item = {
           pokemon,
           ...rest,
-          // version_details: version_details.map(({ version, ...rest }) => ({
-          //   ...version,
-          //   ...rest,
-          //   item,
-          // })),
+          version_details: version_details.map(({ version, ...rest }) => ({
+            ...version,
+            ...rest,
+            item,
+          })),
         };
 
         return item;
@@ -103,10 +99,10 @@ export class PokemonsService {
         move = {
           ...rest,
           pokemon,
-          // version_group_details: version_group_details.map((details) => ({
-          //   ...details,
-          //   move,
-          // })),
+          version_group_details: version_group_details.map((details) => ({
+            ...details,
+            move,
+          })),
         };
         return move;
       },
@@ -184,12 +180,47 @@ export class PokemonsService {
 
   // TODO: too slow
   async createMany(pokemonDtoArr: CreatePokemonDto[]) {
-    const entities = pokemonDtoArr.map((pokemonDto, i) =>
+    const entities = pokemonDtoArr.map((pokemonDto) =>
       this.toEntity(pokemonDto),
     );
-    // const pokemonArr = this.pokemonsRepository.create(entities);
 
-    await this.pokemonsRepository.save(entities);
+    await this.pokemonsRepository.insert(entities);
+
+    const version_group_details = entities.flatMap((e) =>
+      e.moves.flatMap((m) => m.version_group_details),
+    );
+    const version_details = entities.flatMap((e) =>
+      e.held_items.flatMap((m) => m.version_details),
+    );
+
+    for (const e of entities) {
+      const relations: RelationMap = Object.fromEntries(
+        Object.entries(e).filter(([_k, v]) => Array.isArray(v)),
+      );
+
+      for (const k of Object.keys(relations)) {
+        this.pokemonsRepository
+          .createQueryBuilder()
+          .insert()
+          .values(relations[k].map(({ pokemon: _, ...rest }) => rest))
+          .into(k)
+          .execute();
+      }
+    }
+    console.log('hi');
+
+    this.pokemonsRepository
+      .createQueryBuilder()
+      .insert()
+      .values(version_group_details)
+      .into(MoveVersionDetails)
+      .execute();
+    this.pokemonsRepository
+      .createQueryBuilder()
+      .insert()
+      .values(version_details)
+      .into(ItemVersionDetails)
+      .execute();
 
     return this.pokemonsRepository
       .createQueryBuilder()
