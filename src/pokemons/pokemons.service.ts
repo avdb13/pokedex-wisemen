@@ -4,15 +4,10 @@ import { FindManyOptions, Repository } from 'typeorm';
 
 import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 import {
-  Ability,
-  GameIndex,
   Item,
-  Kind,
   Move,
   Pokemon,
-  Sprite,
   SpriteMap,
-  Stat,
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
@@ -23,29 +18,17 @@ const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
 // this is so we can return the relations with the ID
 // Omit past_types because we don't need it
 type Relations<P = Omit<Pokemon, 'id' | 'past_types'>> = {
-  [K in keyof P as P[K] extends Array<infer _I>
-    ? K
-    : never]: P[K] extends Array<infer I> ? Array<Omit<I, 'pokemon'>> : never;
+  [K in keyof P as P[K] extends Array<infer _> ? K : never]: P[K] extends Array<
+    infer I
+  >
+    ? Array<Omit<I, 'pokemon'>>
+    : never;
 };
 
-type Keys = keyof Omit<Relations, 'id'>;
+type Keys = keyof Relations;
 
 type RelationMap = {
-  [K in Keys]: {
-    [id: number]: Relations[K];
-  };
-};
-
-const relationToMap = (
-  init: RelationMap,
-  relations: Relations & { id: number },
-): RelationMap => {
-  const { id, ...rest } = relations;
-
-  return Object.entries(rest as Relations).map(([k, v]) => ({
-    ...init,
-    [k as Keys]: { ...init[k as Keys], [id]: v },
-  }));
+  [K in Keys]: Record<number, Relations[K]>;
 };
 
 @Injectable()
@@ -214,11 +197,10 @@ export class PokemonsService {
   }
 
   async create(pokemonDto: CreatePokemonDto) {
-    const entity = this.toEntity(pokemonDto);
-    const partial = await this.pokemonsRepository.save(entity);
-
-    const pokemon = this.addRelations(pokemonDto, partial);
-    return this.pokemonsRepository.save(pokemon);
+    // const entity = this.toEntity(pokemonDto);
+    // const partial = await this.pokemonsRepository.save(entity);
+    // const pokemon = this.addRelations(pokemonDto, partial);
+    // return this.pokemonsRepository.save(pokemon);
   }
 
   // TODO: too slow
@@ -233,18 +215,33 @@ export class PokemonsService {
 
     // not typed sadly but more efficient
     const ids: number[] = raw.map((result: any) => result.id!);
-    const relations = pokemonDtoArr.map((dto, i) =>
-      this.addRelations(dto, ids[i]),
-    );
+    const relations = pokemonDtoArr.map((dto, i) => ({
+      inner: this.addRelations(dto, ids[i]),
+      id: ids[i],
+    }));
 
-    const relationMap = relations.reduce(relationToMap);
+    const relationMap = relations.reduce((init, relations) => {
+      const { inner: rest, id } = relations;
 
-    relations.map(({ id, relations }) => {
-      this.pokemonsRepository
-        .createQueryBuilder()
-        .relation(/* key of relation */)
-        .of(id)
-        .add(/* value of relation */);
+      return Object.fromEntries(
+        Object.entries(rest).map(([k, v]) => [
+          k as Keys,
+          {
+            ...init[k as Keys],
+            [id]: v,
+          },
+        ]),
+      );
+    }, {} as RelationMap);
+
+    Object.keys(relationMap).map((k) => {
+      Object.entries(relationMap[k as Keys]).map(([id, entries]) => {
+        this.pokemonsRepository
+          .createQueryBuilder()
+          .relation(k.toString())
+          .of(id)
+          .add(entries);
+      });
     });
 
     pokemon = pokemon.map((partial) => this.addDetails(partial));

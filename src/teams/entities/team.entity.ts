@@ -1,4 +1,11 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Relation,
+} from 'typeorm';
 
 @Entity()
 export class Team {
@@ -10,4 +17,7 @@ export class Team {
 
   @Column('simple-array', { nullable: true })
   pokemons: number[] = [];
+
+  @ManyToOne(() => User, (user) => user.teams)
+  user: Relation<User>;
 }
