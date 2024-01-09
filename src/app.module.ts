@@ -5,6 +5,7 @@ import { PokemonsModule } from './pokemons/pokemons.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TeamsModule } from './teams/teams.module';
 import { join } from 'path';
+import { UsersModule } from './users/users.module';
 
 // TODO: config file for database credentials
 @Module({
@@ -25,6 +26,7 @@ import { join } from 'path';
       relationLoadStrategy: 'join',
     }),
     TeamsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
