@@ -21,7 +21,7 @@ import { UsersModule } from './users/users.module';
       database: 'pokedex',
       synchronize: true,
       dropSchema: true,
-      logging: ['error'],
+      logging: ['error', 'query'],
       cache: true,
     }),
     TeamsModule,

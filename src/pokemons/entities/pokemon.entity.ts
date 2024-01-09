@@ -18,7 +18,7 @@ abstract class NameAndUrl {
   url: string;
 }
 
-@Entity()
+@Entity({ name: 'pokemon' })
 export class Pokemon {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -101,7 +101,7 @@ export class Pokemon {
   weight: number;
 }
 
-@Entity()
+@Entity({ name: 'abilities' })
 export class Ability extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -117,7 +117,7 @@ export class Ability extends NameAndUrl {
   pokemon: Relation<Pokemon>;
 }
 
-@Entity()
+@Entity({ name: 'game_indices' })
 export class GameIndex extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -130,7 +130,7 @@ export class GameIndex extends NameAndUrl {
   pokemon: Relation<Pokemon>;
 }
 
-@Entity()
+@Entity({ name: 'version_details' })
 export class ItemVersionDetails extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -143,7 +143,7 @@ export class ItemVersionDetails extends NameAndUrl {
   item?: Relation<Item>;
 }
 
-@Entity()
+@Entity({ name: 'held_items' })
 export class Item extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -159,7 +159,7 @@ export class Item extends NameAndUrl {
   version_details: Relation<ItemVersionDetails[]>;
 }
 
-@Entity()
+@Entity({ name: 'version_group_details' })
 export class MoveVersionDetails {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -178,7 +178,7 @@ export class MoveVersionDetails {
   move?: Relation<Move>;
 }
 
-@Entity()
+@Entity({ name: 'moves' })
 export class Move extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -194,35 +194,6 @@ export class Move extends NameAndUrl {
   })
   version_group_details: Relation<MoveVersionDetails[]>;
 }
-
-// @Entity()
-// export class PastType extends NameAndUrl {
-//   @PrimaryGeneratedColumn()
-//   id?: number;
-
-//   @OneToMany(() => PastTypeKind, (type) => type.parent, {
-//     cascade: true,
-//     onDelete: 'CASCADE',
-//   })
-//   types: Relation<PastTypeKind[]>;
-
-//   @ManyToOne(() => Pokemon, (pokemon) => pokemon.past_types)
-//   @Index()
-//   pokemon: Relation<Pokemon>;
-// }
-
-// @Entity()
-// export class PastTypeKind extends NameAndUrl {
-//   @PrimaryGeneratedColumn()
-//   id?: number;
-
-//   @ManyToOne(() => PastType, (past_type) => past_type.types)
-//   @Index()
-//   parent?: Relation<PastType>;
-
-//   @Column()
-//   slot: number;
-// }
 
 export abstract class SpriteMap {
   @Column({ type: 'varchar' })
@@ -250,7 +221,7 @@ export abstract class SpriteMap {
   back_shiny_female?: string;
 }
 
-@Entity()
+@Entity({ name: 'sprites' })
 export class Sprite extends SpriteMap {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -272,7 +243,7 @@ export class Sprite extends SpriteMap {
   is_icons?: boolean;
 }
 
-@Entity()
+@Entity({ name: 'types' })
 export class Kind extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -285,7 +256,7 @@ export class Kind extends NameAndUrl {
   slot: number;
 }
 
-@Entity()
+@Entity({ name: 'stats' })
 export class Stat extends NameAndUrl {
   @PrimaryGeneratedColumn()
   id?: number;
@@ -318,3 +289,32 @@ export const titles = Object.values(generationRecord).flatMap(
 
 export type Title =
   (typeof generationRecord)[keyof typeof generationRecord][number];
+
+// @Entity()
+// export class PastType extends NameAndUrl {
+//   @PrimaryGeneratedColumn()
+//   id?: number;
+
+//   @OneToMany(() => PastTypeKind, (type) => type.parent, {
+//     cascade: true,
+//     onDelete: 'CASCADE',
+//   })
+//   types: Relation<PastTypeKind[]>;
+
+//   @ManyToOne(() => Pokemon, (pokemon) => pokemon.past_types)
+//   @Index()
+//   pokemon: Relation<Pokemon>;
+// }
+
+// @Entity()
+// export class PastTypeKind extends NameAndUrl {
+//   @PrimaryGeneratedColumn()
+//   id?: number;
+
+//   @ManyToOne(() => PastType, (past_type) => past_type.types)
+//   @Index()
+//   parent?: Relation<PastType>;
+
+//   @Column()
+//   slot: number;
+// }

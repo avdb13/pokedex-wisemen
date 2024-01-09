@@ -31,7 +31,10 @@ type UnionMap<R extends object> = {
 };
 
 type Relations = PickArrayChildren<Omit<Pokemon, 'id'>>;
+type Details = PickArrayChildren<PickArrayChildren<Move & Item>>;
+
 type RelationMap = UnionMap<Relations>;
+type DetailsMap = UnionMap<Details>;
 
 @Injectable()
 export class PokemonsService {
@@ -186,41 +189,48 @@ export class PokemonsService {
 
     await this.pokemonsRepository.insert(entities);
 
-    const version_group_details = entities.flatMap((e) =>
-      e.moves.flatMap((m) => m.version_group_details),
-    );
-    const version_details = entities.flatMap((e) =>
-      e.held_items.flatMap((m) => m.version_details),
-    );
-
-    for (const e of entities) {
+    const saveRelations = entities.flatMap((e) => {
       const relations: RelationMap = Object.fromEntries(
         Object.entries(e).filter(([_k, v]) => Array.isArray(v)),
       );
 
-      for (const k of Object.keys(relations)) {
+      return Object.keys(relations).map((k) =>
         this.pokemonsRepository
           .createQueryBuilder()
           .insert()
           .values(relations[k].map(({ pokemon: _, ...rest }) => rest))
           .into(k)
-          .execute();
-      }
-    }
-    console.log('hi');
+          .execute(),
+      );
+    });
+    await Promise.all(saveRelations);
 
-    this.pokemonsRepository
+    const preload = await this.pokemonsRepository
       .createQueryBuilder()
-      .insert()
-      .values(version_group_details)
-      .into(MoveVersionDetails)
-      .execute();
-    this.pokemonsRepository
-      .createQueryBuilder()
-      .insert()
-      .values(version_details)
-      .into(ItemVersionDetails)
-      .execute();
+      .leftJoinAndSelect('Pokemon.moves', 'moves')
+      .leftJoinAndSelect('Pokemon.held_items', 'held_items')
+      .getMany();
+
+    const details = preload.flatMap((e) => ({
+      version_group_details: e.held_items.flatMap((m) => m.version_details),
+      version_details: e.moves.flatMap((m) => m.version_group_details),
+    })) as DetailsMap[];
+
+    const saveDetails = details.flatMap((d) => {
+      const details: DetailsMap = Object.fromEntries(
+        Object.entries(d).filter(([_k, v]) => Array.isArray(v)),
+      );
+
+      return Object.keys(details).map((k) =>
+        this.pokemonsRepository
+          .createQueryBuilder()
+          .insert()
+          .values(details[k].map((value) => ({ ...value })))
+          .into(k)
+          .execute(),
+      );
+    });
+    await Promise.all(saveDetails);
 
     return this.pokemonsRepository
       .createQueryBuilder()
