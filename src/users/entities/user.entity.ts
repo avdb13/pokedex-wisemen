@@ -11,16 +11,18 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
+  @Column({ update: false })
   name: string;
 
   @Column()
   email: string;
 
-  @Column()
+  @Column({ select: false })
   password: string;
 
   @CreateDateColumn({
+    select: false,
+    update: false,
     type: 'timestamp',
     // 6 === save as microseconds
     default: () => 'CURRENT_TIMESTAMP(6)',
@@ -28,6 +30,8 @@ export class User {
   created_at: Date;
 
   @UpdateDateColumn({
+    select: false,
+    update: false,
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
     onUpdate: 'CURRENT_TIMESTAMP(6)',
