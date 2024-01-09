@@ -82,6 +82,9 @@ type Kind = {
 
 export class CreatePokemonDto {
   @IsNotEmpty()
+  id: number;
+
+  @IsNotEmpty()
   abilities: Array<Ability>;
 
   @IsNotEmpty()

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   HttpStatus,
   NotFoundException,
   Param,
@@ -47,6 +48,10 @@ export class PokemonsController {
     )
     id: number,
   ) {
+    if (id < 1) {
+      throw new NotFoundException();
+    }
+
     const pokemon = await this.pokemonsService.findOne(id);
 
     if (!pokemon) {
@@ -56,16 +61,18 @@ export class PokemonsController {
     return pokemon;
   }
 
-  @Post('json')
-  importFromJson(@Body() body: CreatePokemonDto | Array<CreatePokemonDto>) {
-    if (Array.isArray(body)) {
-      this.pokemonsService.createMany(body);
-    } else {
-      this.pokemonsService.create(body);
-    }
+  @Post()
+  // this returns circular JSON, drop the return value!
+  async importFromJson(
+    @Body() body: CreatePokemonDto | Array<CreatePokemonDto>,
+  ) {
+    Array.isArray(body)
+      ? this.pokemonsService.createMany(body)
+      : this.pokemonsService.create(body);
   }
 
   @Delete()
+  @HttpCode(204)
   removeAll() {
     return this.pokemonsService.removeAll();
   }

@@ -4,6 +4,8 @@ import { FindManyOptions, Repository } from 'typeorm';
 
 import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 import {
+  Ability,
+  GameIndex,
   Item,
   Kind,
   Move,
@@ -17,6 +19,16 @@ import { FindOptions, SearchOptions } from './pokemons.guard';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
+
+// this is so we can return the relations with the ID
+type Relations = {
+  [K in keyof Pokemon]: Pokemon[K] extends Array<infer I>
+    ? Array<Omit<I, 'pokemon'> & { pokemon: number }>
+    : never;
+};
+type RelationMap = {
+  [K in keyof Relations]: Record<K, Record<number, Relations[K]>>;
+};
 
 @Injectable()
 export class PokemonsService {
@@ -49,7 +61,8 @@ export class PokemonsService {
     return pokemon;
   }
 
-  addRelations(pokemonDto: CreatePokemonDto, pokemon: Pokemon) {
+  // TODO: return type
+  addRelations(pokemonDto: CreatePokemonDto, pokemon: number) {
     const abilities = pokemonDto.abilities.map(
       ({ ability, is_hidden, slot }) => ({
         ...ability,
@@ -66,43 +79,32 @@ export class PokemonsService {
         pokemon,
       }),
     );
+    // this.pokemonsRepository.preload
 
     const held_items = pokemonDto.held_items.map(
-      ({ item: rest, version_details }) => {
-        let item = new Item();
-
-        item = {
-          ...rest,
-          pokemon,
-          version_details: version_details.map(({ rarity, version }) => ({
-            ...version,
-            rarity,
-          })),
-        };
-
-        return item;
-      },
+      ({ item: rest, version_details }) => ({
+        ...rest,
+        pokemon,
+        version_details: version_details.map(({ rarity, version }) => ({
+          ...version,
+          rarity,
+        })),
+      }),
     );
 
     const moves = pokemonDto.moves.map(
-      ({ move: rest, version_group_details }) => {
-        let move = new Move();
-
-        move = {
-          ...rest,
-          pokemon,
-          version_group_details: version_group_details.map((details) => ({
-            ...details,
-          })),
-        };
-
-        return move;
-      },
+      ({ move: rest, version_group_details }) => ({
+        ...rest,
+        pokemon,
+        version_group_details: version_group_details.map((details) => ({
+          ...details,
+        })),
+      }),
     );
 
     const { other, versions, ...baseSprites } = pokemonDto.sprites;
 
-    const spritesByVersion: Array<Sprite> = Object.entries(versions).flatMap(
+    const spritesByVersion = Object.entries(versions).flatMap(
       ([_generation, sprites]) =>
         Object.entries(sprites).flatMap(([title, spriteMap]) =>
           spriteMap.animated
@@ -131,44 +133,41 @@ export class PokemonsService {
         ),
     );
 
-    const otherSprites: Array<Sprite> = Object.entries(other).map(
-      ([_generation, spriteMap]) => ({
-        ...(spriteMap as NoNull<SpriteMap>),
-        pokemon,
-        isOther: true,
-      }),
-    );
+    const otherSprites = Object.entries(other).map(([title, spriteMap]) => ({
+      ...(spriteMap as NoNull<SpriteMap>),
+      pokemon,
+      isOther: true,
+      title,
+    }));
 
     const sprites = [
-      { ...baseSprites, pokemon } as Sprite,
+      { ...baseSprites, pokemon },
       ...spritesByVersion,
       ...otherSprites,
     ];
 
-    const stats: Array<Stat> = pokemonDto.stats.map(
-      ({ stat, effort, base_stat }) => ({
-        ...stat,
-        effort,
-        base_stat,
-        pokemon,
-      }),
-    );
+    const stats = pokemonDto.stats.map(({ stat, effort, base_stat }) => ({
+      ...stat,
+      effort,
+      base_stat,
+      pokemon,
+    }));
 
-    const types: Array<Kind> = pokemonDto.types.map(({ slot, type }) => ({
+    const types = pokemonDto.types.map(({ slot, type }) => ({
       ...type,
       slot,
       pokemon,
     }));
 
-    pokemon.abilities = abilities;
-    pokemon.game_indices = game_indices;
-    pokemon.held_items = held_items;
-    pokemon.moves = moves;
-    pokemon.sprites = sprites;
-    pokemon.stats = stats;
-    pokemon.types = types;
-
-    return pokemon;
+    return {
+      abilities,
+      game_indices,
+      held_items,
+      moves,
+      sprites,
+      stats,
+      types,
+    } as Relations;
   }
 
   addDetails(pokemon: Pokemon) {
@@ -204,23 +203,42 @@ export class PokemonsService {
     return this.pokemonsRepository.save(pokemon);
   }
 
+  // TODO: too slow
   async createMany(pokemonDtoArr: CreatePokemonDto[]) {
     let pokemon = pokemonDtoArr.map((pokemonDto) => this.toEntity(pokemonDto));
-    pokemon = await this.pokemonsRepository.save(pokemon);
+    const { raw } = await this.pokemonsRepository
+      .createQueryBuilder()
+      .insert()
+      .values(pokemon)
+      .returning('id')
+      .execute();
 
-    pokemon = pokemon.map((partial, i) =>
-      this.addRelations(pokemonDtoArr[i], partial),
-    );
-    pokemon = await this.pokemonsRepository.save(pokemon);
+    // not typed sadly but more efficient
+    const ids: number[] = raw.map((result: any) => result.id!);
+
+    // const relations = ids.reduce((init, id, i) => {
+    //   const relations = this.addRelations(pokemonDtoArr[i], id);
+    //   Object.entries(relations).reduce((init, rel))
+
+    // }, {} as RelationMap);
+
+    // relations.map(({id, relations}) => {
+    //   this.pokemonsRepository
+    //     .createQueryBuilder()
+    //     .relation(/* key of relation */)
+    //     .of(id)
+    //     .add(/* value of relation */);
+    // });
 
     pokemon = pokemon.map((partial) => this.addDetails(partial));
     const result = await this.pokemonsRepository.save(pokemon);
+    console.log('3');
 
     return result;
   }
 
   // show 10 results if no limit was defined
-  findAll(findOpts: FindOptions = {}): Promise<Pokemon[]> {
+  async findAll(findOpts: FindOptions = {}): Promise<Pokemon[]> {
     if (isSearchOptions(findOpts)) {
       const { query, limit } = findOpts;
 
@@ -250,7 +268,9 @@ export class PokemonsService {
       skip,
     };
 
-    return this.pokemonsRepository.find(opts);
+    const result = await this.pokemonsRepository.find(opts);
+
+    return result;
   }
 
   async findOne(id: number) {
