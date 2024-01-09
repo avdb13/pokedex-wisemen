@@ -9,6 +9,7 @@ import {
   Move,
   MoveVersionDetails,
   Pokemon,
+  Sprite,
   SpriteMap,
   titles,
 } from './entities/pokemon.entity';
@@ -43,7 +44,7 @@ export class PokemonsService {
   ) {}
 
   toEntity(pokemonDto: CreatePokemonDto) {
-    const pokemon = new Pokemon();
+    const pokemon = this.pokemonsRepository.create();
 
     const {
       base_experience,
@@ -64,48 +65,51 @@ export class PokemonsService {
     pokemon.weight = weight;
     pokemon.form = pokemonDto.forms[0];
 
-    return pokemon;
-  }
+    pokemon.abilities = pokemonDto.abilities.map(({ ability, ...rest }) => ({
+      ...ability,
+      ...rest,
+      pokemon,
+    }));
 
-  // TODO: return type
-  addRelations(pokemonDto: CreatePokemonDto, pokemon: number) {
-    const abilities = pokemonDto.abilities.map(
-      ({ ability, is_hidden, slot }) => ({
-        ...ability,
-        slot,
-        is_hidden,
-        pokemon,
-      }),
-    );
-
-    const game_indices = pokemonDto.game_indices.map(
+    pokemon.game_indices = pokemonDto.game_indices.map(
       ({ version, game_index }) => ({
         ...version,
         value: game_index,
         pokemon,
       }),
     );
-    // this.pokemonsRepository.preload
 
-    const held_items = pokemonDto.held_items.map(
-      ({ item: rest, version_details }) => ({
-        ...rest,
-        pokemon,
-        version_details: version_details.map(({ rarity, version }) => ({
-          ...version,
-          rarity,
-        })),
-      }),
+    pokemon.held_items = pokemonDto.held_items.map(
+      ({ item: rest, version_details }) => {
+        let item = new Item();
+
+        item = {
+          pokemon,
+          ...rest,
+          // version_details: version_details.map(({ version, ...rest }) => ({
+          //   ...version,
+          //   ...rest,
+          //   item,
+          // })),
+        };
+
+        return item;
+      },
     );
 
-    const moves = pokemonDto.moves.map(
-      ({ move: rest, version_group_details }) => ({
-        ...rest,
-        pokemon,
-        version_group_details: version_group_details.map((details) => ({
-          ...details,
-        })),
-      }),
+    pokemon.moves = pokemonDto.moves.map(
+      ({ move: rest, version_group_details }) => {
+        let move = new Move();
+        move = {
+          ...rest,
+          pokemon,
+          // version_group_details: version_group_details.map((details) => ({
+          //   ...details,
+          //   move,
+          // })),
+        };
+        return move;
+      },
     );
 
     const { other, versions, ...baseSprites } = pokemonDto.sprites;
@@ -146,191 +150,52 @@ export class PokemonsService {
       title,
     }));
 
-    const sprites = [
+    pokemon.sprites = [
       { ...baseSprites, pokemon },
       ...spritesByVersion,
       ...otherSprites,
-    ];
+    ] as Sprite[];
 
-    const stats = pokemonDto.stats.map(({ stat, effort, base_stat }) => ({
+    pokemon.stats = pokemonDto.stats.map(({ stat, effort, base_stat }) => ({
       ...stat,
       effort,
       base_stat,
       pokemon,
     }));
 
-    const types = pokemonDto.types.map(({ slot, type }) => ({
+    pokemon.types = pokemonDto.types.map(({ slot, type }) => ({
       ...type,
       slot,
       pokemon,
     }));
 
-    return {
-      abilities,
-      game_indices,
-      held_items,
-      moves,
-      sprites,
-      stats,
-      types,
-    };
-  }
-
-  addDetails(pokemon: Pokemon) {
-    const moves = pokemon.moves.map((move) => ({
-      ...move,
-      version_group_details: move.version_group_details.map(
-        ({ move: _, ...rest }) => ({
-          ...rest,
-        }),
-      ),
-    }));
-
-    const held_items = pokemon.held_items.map((item) => ({
-      ...item,
-      version_details: item.version_details.map(({ item: _, ...rest }) => ({
-        ...rest,
-      })),
-    }));
-
-    pokemon.held_items = held_items;
-    pokemon.moves = moves;
-
     return pokemon;
   }
 
   async create(pokemonDto: CreatePokemonDto) {
-    // const entity = this.toEntity(pokemonDto);
-    // const partial = await this.pokemonsRepository.save(entity);
-    // const pokemon = this.addRelations(pokemonDto, partial);
-    // return this.pokemonsRepository.save(pokemon);
+    // const pokemon = this.toEntity(pokemonDto);
+    // await this.pokemonsRepository
+    //   .createQueryBuilder()
+    //   .insert()
+    //   .values(pokemon)
+    //   .execute();
+    // return this.pokemonsRepository.createQueryBuilder().getOne();
   }
 
   // TODO: too slow
   async createMany(pokemonDtoArr: CreatePokemonDto[]) {
-    const entities = pokemonDtoArr.map((pokemonDto) =>
+    const entities = pokemonDtoArr.map((pokemonDto, i) =>
       this.toEntity(pokemonDto),
     );
+    // const pokemonArr = this.pokemonsRepository.create(entities);
 
-    await this.pokemonsRepository
+    await this.pokemonsRepository.save(entities);
+
+    return this.pokemonsRepository
       .createQueryBuilder()
-      .insert()
-      .values(entities)
-      .execute();
-    const pokemon = await this.pokemonsRepository
-      .createQueryBuilder()
+      .leftJoinAndSelect('Pokemon.sprites', 'sprite')
+      .leftJoinAndSelect('Pokemon.types', 'type')
       .getMany();
-
-    // not typed sadly but more efficient
-    const ids = pokemon.map(({ id }) => id!);
-    const relations = pokemonDtoArr.map((dto, i) => ({
-      inner: this.addRelations(dto, ids[i]),
-      id: ids[i],
-    }));
-    console.log(ids.length, relations.length);
-
-    const relationMap = relations.reduce((init, relations) => {
-      const { inner: rest, id } = relations;
-
-      return Object.fromEntries(
-        Object.entries(rest).map(([k, v]) => [
-          k,
-          {
-            ...init[k as keyof Relations],
-            [id]: v,
-          },
-        ]),
-      );
-    }, {} as RelationMap);
-
-    console.log('hi');
-    const saveRelations = Promise.all(
-      Object.keys(relationMap).flatMap((k) =>
-        Object.entries(relationMap[k]).map(([id, entries]) => {
-          const into =
-            k === 'abilities'
-              ? 'ability'
-              : k === 'types'
-                ? 'kind'
-                : k === 'game_indices'
-                  ? 'game_index'
-                  : k.slice(0, -1);
-
-          this.pokemonsRepository
-            .createQueryBuilder()
-            .insert()
-            .into(into)
-            .values(entries)
-            .execute();
-        }),
-      ),
-    );
-    console.log('hi');
-    Object.keys(relationMap).flatMap((k) =>
-      Object.entries(relationMap[k]).map(([id, entries]) => {
-        return this.pokemonsRepository
-          .createQueryBuilder()
-          .insert()
-          .relation(k.toString())
-          .of(id)
-          .printSql()
-          .add(entries);
-      }),
-    );
-    console.log('hi');
-
-    let pokemons = await this.pokemonsRepository
-      .createQueryBuilder()
-      .select()
-      .leftJoin('Pokemon.moves', 'moves')
-      .leftJoin('Pokemon.held_items', 'items')
-      .addSelect(['moves', 'items'])
-      .getMany();
-
-    pokemons = pokemons.map(this.addDetails);
-
-    const version_group_details = pokemons.reduce(
-      (init, { moves }) => ({
-        ...init,
-        ...moves.reduce(
-          (subinit, { id, version_group_details }) => ({
-            ...subinit,
-            [id!]: version_group_details,
-          }),
-          {} as Record<number, MoveVersionDetails>,
-        ),
-      }),
-      {} as Record<number, MoveVersionDetails>,
-    );
-
-    const version_details = pokemons.reduce(
-      (init, { held_items }) => ({
-        ...init,
-        ...held_items.reduce(
-          (subinit, { id, version_details }) => ({
-            ...subinit,
-            [id!]: version_details,
-          }),
-          {} as Record<number, ItemVersionDetails>,
-        ),
-      }),
-      {} as Record<number, ItemVersionDetails>,
-    );
-
-    const detailsMap = { version_details, version_group_details } as DetailsMap;
-
-    const saveDetails = Object.keys(detailsMap).map((k) =>
-      Object.entries(detailsMap[k]).map(([id, entries]) =>
-        this.pokemonsRepository
-          .createQueryBuilder()
-          .relation(k.toString())
-          .of(id)
-          .add(entries),
-      ),
-    );
-    await Promise.all(saveDetails);
-
-    return pokemons;
   }
 
   // show 10 results if no limit was defined
@@ -339,9 +204,9 @@ export class PokemonsService {
       const { query, limit } = findOpts;
 
       return this.pokemonsRepository
-        .createQueryBuilder('pokemon')
-        .leftJoin('pokemon.sprites', 'sprite')
-        .leftJoin('pokemon.types', 'type')
+        .createQueryBuilder()
+        .leftJoin('Pokemon.sprites', 'sprite')
+        .leftJoin('Pokemon.types', 'type')
         .where(`type.name ILIKE :query OR name ILIKE :query`, {
           query: `%${query}%`,
         })
@@ -378,10 +243,10 @@ export class PokemonsService {
       .useIndex('IDX_60a975c4d9904819e08e413bb3')
       .useIndex('IDX_e838af4590b44f9f01fb5a355b')
       .useIndex('IDX_67af8e7b41ad55426cc3932bb7')
-      .leftJoinAndSelect('pokemon.sprites', 'sprite')
-      .leftJoinAndSelect('pokemon.types', 'type')
-      .leftJoinAndSelect('pokemon.stats', 'stat')
-      .leftJoinAndSelect('pokemon.abilities', 'ability')
+      .leftJoinAndSelect('Pokemon.sprites', 'sprite')
+      .leftJoinAndSelect('Pokemon.types', 'type')
+      .leftJoinAndSelect('Pokemon.stats', 'stat')
+      .leftJoinAndSelect('Pokemon.abilities', 'ability')
       .getOne();
 
     if (!pokemon) {
@@ -395,7 +260,7 @@ export class PokemonsService {
       .createQueryBuilder('pokemon')
       .where({ id })
       .useIndex('IDX_ce791a0a93f777c04011f2a403')
-      .leftJoinAndSelect('pokemon.moves', 'move')
+      .leftJoinAndSelect('Pokemon.moves', 'move')
       .leftJoinAndSelect('move.version_group_details', 'version_group_details')
       .addSelect([
         'version_group_details.level_learned_at',

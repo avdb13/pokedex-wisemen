@@ -66,9 +66,9 @@ export class PokemonsController {
   async importFromJson(
     @Body() body: CreatePokemonDto | Array<CreatePokemonDto>,
   ) {
-    Array.isArray(body)
-      ? this.pokemonsService.createMany(body)
-      : this.pokemonsService.create(body);
+    return Array.isArray(body)
+      ? await this.pokemonsService.createMany(body)
+      : await this.pokemonsService.create(body);
   }
 
   @Delete()
