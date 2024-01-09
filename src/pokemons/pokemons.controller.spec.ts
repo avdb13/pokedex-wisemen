@@ -6,86 +6,33 @@ import { join } from 'path';
 import * as pokemonsJson from '../pokemons-simple.json';
 import { Pokemon } from './entities/pokemon.entity';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
-import { GetPokemonDetailsDto } from './dto/get-pokemon';
-import { InternalServerErrorException } from '@nestjs/common';
-import { SpriteMap } from './entities/pokemon.entity';
-import { isBaseSprite } from './pokemons.interceptor';
+import { INestApplication } from '@nestjs/common';
+import {
+  PokemonDetailsInterceptor,
+  toPokemon,
+  toPokemonDetails,
+} from './pokemons.interceptor';
+import * as supertest from 'supertest';
+import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
+import { json } from 'express';
 
 describe('PokemonsController', () => {
-  let controller: PokemonsController;
+  let app: INestApplication;
   let service: PokemonsService;
-  let req: unknown;
-
+  let request: supertest.SuperTest<supertest.Test>;
   const pokemons: CreatePokemonDto[] = pokemonsJson;
 
-  const toPokemonDetails = (pokemon: Pokemon): GetPokemonDetailsDto => {
-    const {
-      id,
-      form: { name },
-      sprites: tooManySprites,
-      types,
-      height,
-      weight,
-      moves,
-      order,
-      species,
-      stats,
-      abilities,
-    } = pokemon;
-
-    const sprite = tooManySprites.find(isBaseSprite);
-
-    if (!sprite) {
-      throw new InternalServerErrorException();
-    }
-
-    const sprites: SpriteMap = Object.keys(sprite).reduce(
-      (init, k, i) =>
-        k in SpriteMap ? { ...init, [k]: Object.values(sprite)[i] } : init,
-      {} as SpriteMap,
+  const toEntity = (p: CreatePokemonDto, id: number = 0) => {
+    const result = service.addDetails(
+      service.addRelations(p, service.toEntity(p)),
     );
 
-    const ok = {
-      id,
-      name,
-      sprites,
-      types: types.map(({ slot, name }) => ({
-        slot,
-        type: { name },
-      })),
-      height,
-      weight,
-      moves: moves.map(({ name, version_group_details }) => ({
-        move: name,
-        version_group_details: version_group_details.map(
-          ({ level_learned_at, version_group, move_learn_method }) => ({
-            level_learned_at,
-            version_group: version_group.name,
-            move_learn_method: move_learn_method.name,
-          }),
-        ),
-      })),
-      order,
-      species: species.name,
-      // test whether it returns only the fields we want
-      stats: stats.map(({ base_stat, name, effort }) => ({
-        base_stat,
-        stat: name,
-        effort,
-      })),
-      abilities: abilities.map(({ name, is_hidden, slot }) => ({
-        ability: name,
-        is_hidden,
-        slot,
-      })),
-      form: name,
-    } as GetPokemonDetailsDto;
-
-    return ok;
+    // not pretty but JS arrays start at 0 and PSQL at 1
+    return { ...result, id: id + 1 };
   };
 
   beforeAll(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    const moduleRef: TestingModule = await Test.createTestingModule({
       imports: [
         TypeOrmModule.forRoot({
           type: 'postgres',
@@ -102,36 +49,126 @@ describe('PokemonsController', () => {
       ],
 
       controllers: [PokemonsController],
-      providers: [PokemonsService],
+      providers: [PokemonsService, PokemonDetailsInterceptor],
     }).compile();
 
-    controller = module.get<PokemonsController>(PokemonsController);
-    service = module.get<PokemonsService>(PokemonsService);
+    app = moduleRef.createNestApplication();
+    app.use(json({ limit: '10mb' }));
+    await app.init();
 
-    controller.importFromJson(pokemonsJson as CreatePokemonDto[]);
+    service = app.get<PokemonsService>(PokemonsService);
+
+    // timeout ?
+    // await controller.importFromJson(pokemonsJson as CreatePokemonDto[]);
+
+    request = supertest(app.getHttpServer());
+
+    if ((await service.findAll()).length !== pokemons.length) {
+      // await request.delete('/api/v1/pokemons').expect(204);
+      // await request
+      //   .post('/api/v1/pokemons')
+      //   .send(pokemons)
+      //   .set('Content-Type', 'application/json')
+      //   .set('Accept', 'application/json')
+      //   .expect(201);
+    }
   });
 
-  it('GET /', async () => {
-    const { toEntity, addRelations, addDetails } = service;
+  describe('GET /', () => {
+    let all: Pokemon[];
+    let fromDb: GetPokemonDto[];
+    let fromJson: GetPokemonDto[];
 
-    const serialize = (p: CreatePokemonDto) =>
-      addDetails(addRelations(p, toEntity(p)));
+    beforeAll(async () => {
+      all = await service.findAll();
 
-    const found = await controller.findOne(1);
-    const pokemon = toPokemonDetails(found);
-    const expected = toPokemonDetails(serialize(pokemons[0]));
+      fromDb = all.map(toPokemon);
+      fromJson = pokemons.map(toEntity).map(toPokemon);
+      // console.log(
+      //   inspect(
+      //     fromDb.map(({ name, types }) => ({ name, types })),
+      //     false,
+      //     null,
+      //     true,
+      //   ),
+      //   inspect(
+      //     fromJson.map(({ name, types }) => ({ name, types })),
+      //     false,
+      //     null,
+      //     true,
+      //   ),
+      // );
 
-    expect(pokemon.moves).toEqual(expected.moves);
-    expect(pokemon.species).toEqual(expected.species);
-    expect(pokemon.stats).toEqual(expected.stats);
-    expect(pokemon.sprites).toEqual(expected.sprites);
-  }, 30_000);
+      expect(fromJson).toEqual(fromDb);
+    });
 
-  it('GET /{:id}', async () => {
-    // const { moves: _, ...pokemon } = await controller.findAll();
-    // const { moves: __, ...expected } = f(pokemons);
-    // expect(JSON.stringify(pokemon, null, 2)).toEqual(
-    //   JSON.stringify(toPokemonDetails(expected), null, 2),
-    // );
-  }, 30_000);
+    describe('200 OK', () => {
+      it('no queries', async () => {
+        request.get('/api/v1/pokemons').expect(200).expect(fromDb);
+      }, 30_000);
+
+      it('sort', async () => {
+        request
+          .get('/api/v1/pokemons')
+          .query({ sort: 'name-asc' })
+          .expect(200)
+          .expect(
+            fromDb.toSorted((a, b) =>
+              a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+            ),
+          );
+
+        request
+          .get('/api/v1/pokemons')
+          .query({ sort: 'id-desc' })
+          .expect(200)
+          .expect(fromDb.toReversed());
+      }, 30_000);
+    });
+
+    describe('400 BAD_REQUEST', () => {
+      it('sort', async () => {
+        const fromJson = pokemons.map(toEntity).map(toPokemon);
+        const fromDb = (await service.findAll()).map(toPokemon);
+
+        expect(fromJson).toEqual(fromDb);
+
+        request
+          .get('/api/v1/pokemons')
+          .query({ sort: 'weight-desc' })
+          .expect(400);
+        // .expect();
+      }, 30_000);
+    });
+  });
+
+  describe('GET /{:id}', () => {
+    let one: Pokemon | null;
+    let fromDb: GetPokemonDetailsDto;
+    let fromJson: GetPokemonDetailsDto;
+
+    beforeAll(async () => {
+      one = await service.findOne(1);
+      fromDb = toPokemonDetails(one!);
+      fromJson = toPokemonDetails(toEntity(pokemons[0]));
+
+      expect(fromJson).toEqual(fromDb);
+    });
+
+    it('200 OK', async () => {
+      request.get('/api/v1/pokemons/1').expect(200).expect(fromDb);
+    }, 30_000);
+
+    it('400 BAD_REQUEST', async () => {
+      request.get(`/api/v1/pokemons/jigglypuff`).expect(400);
+    });
+
+    it('404 NOT_FOUND', async () => {
+      request.get('/api/v1/pokemons/-404').expect(404);
+      // .expect();
+
+      request.get(`/api/v1/pokemons/${pokemons.length + 1}`).expect(404);
+      // .expect();
+    }, 30_000);
+  });
 });
