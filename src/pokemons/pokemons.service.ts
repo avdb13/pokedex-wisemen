@@ -21,13 +21,31 @@ const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
 
 // this is so we can return the relations with the ID
-type Relations = {
-  [K in keyof Pokemon]: Pokemon[K] extends Array<infer I>
-    ? Array<Omit<I, 'pokemon'> & { pokemon: number }>
-    : never;
+// Omit past_types because we don't need it
+type Relations<P = Omit<Pokemon, 'id' | 'past_types'>> = {
+  [K in keyof P as P[K] extends Array<infer _I>
+    ? K
+    : never]: P[K] extends Array<infer I> ? Array<Omit<I, 'pokemon'>> : never;
 };
+
+type Keys = keyof Omit<Relations, 'id'>;
+
 type RelationMap = {
-  [K in keyof Relations]: Record<K, Record<number, Relations[K]>>;
+  [K in Keys]: {
+    [id: number]: Relations[K];
+  };
+};
+
+const relationToMap = (
+  init: RelationMap,
+  relations: Relations & { id: number },
+): RelationMap => {
+  const { id, ...rest } = relations;
+
+  return Object.entries(rest as Relations).map(([k, v]) => ({
+    ...init,
+    [k as Keys]: { ...init[k as Keys], [id]: v },
+  }));
 };
 
 @Injectable()
@@ -215,20 +233,19 @@ export class PokemonsService {
 
     // not typed sadly but more efficient
     const ids: number[] = raw.map((result: any) => result.id!);
+    const relations = pokemonDtoArr.map((dto, i) =>
+      this.addRelations(dto, ids[i]),
+    );
 
-    // const relations = ids.reduce((init, id, i) => {
-    //   const relations = this.addRelations(pokemonDtoArr[i], id);
-    //   Object.entries(relations).reduce((init, rel))
+    const relationMap = relations.reduce(relationToMap);
 
-    // }, {} as RelationMap);
-
-    // relations.map(({id, relations}) => {
-    //   this.pokemonsRepository
-    //     .createQueryBuilder()
-    //     .relation(/* key of relation */)
-    //     .of(id)
-    //     .add(/* value of relation */);
-    // });
+    relations.map(({ id, relations }) => {
+      this.pokemonsRepository
+        .createQueryBuilder()
+        .relation(/* key of relation */)
+        .of(id)
+        .add(/* value of relation */);
+    });
 
     pokemon = pokemon.map((partial) => this.addDetails(partial));
     const result = await this.pokemonsRepository.save(pokemon);
@@ -277,6 +294,11 @@ export class PokemonsService {
     const pokemon = await this.pokemonsRepository
       .createQueryBuilder('pokemon')
       .where({ id })
+      // not sure if indices are used automatically, should have given descriptive names
+      .useIndex('IDX_ee2a4e1b57db5392145fe6eefb')
+      .useIndex('IDX_60a975c4d9904819e08e413bb3')
+      .useIndex('IDX_e838af4590b44f9f01fb5a355b')
+      .useIndex('IDX_67af8e7b41ad55426cc3932bb7')
       .leftJoinAndSelect('pokemon.sprites', 'sprite')
       .leftJoinAndSelect('pokemon.types', 'type')
       .leftJoinAndSelect('pokemon.stats', 'stat')
@@ -293,12 +315,14 @@ export class PokemonsService {
     const rest = await this.pokemonsRepository
       .createQueryBuilder('pokemon')
       .where({ id })
+      .useIndex('IDX_ce791a0a93f777c04011f2a403')
       .leftJoinAndSelect('pokemon.moves', 'move')
       .leftJoinAndSelect('move.version_group_details', 'version_group_details')
       .addSelect([
         'version_group_details.level_learned_at',
+        // we don't need the URLs in our response
         'version_group_details.moveLearnMethodName',
-        'version_group_details.moveLearnMethodUrl',
+        'version_group_details.versionGroupName',
       ])
       .getOne();
 
