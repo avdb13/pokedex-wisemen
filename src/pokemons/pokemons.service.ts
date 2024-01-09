@@ -5,31 +5,36 @@ import { FindManyOptions, Repository } from 'typeorm';
 import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 import {
   Item,
+  ItemVersionDetails,
   Move,
+  MoveVersionDetails,
   Pokemon,
   SpriteMap,
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
+import { inspect } from 'util';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
 
 // this is so we can return the relations with the ID
-// Omit past_types because we don't need it
-type Relations<P = Omit<Pokemon, 'id' | 'past_types'>> = {
+type PickArrayChildren<P, O extends string> = {
   [K in keyof P as P[K] extends Array<infer _> ? K : never]: P[K] extends Array<
     infer I
   >
-    ? Array<Omit<I, 'pokemon'>>
+    ? Array<Omit<I, O>>
     : never;
 };
-
-type Keys = keyof Relations;
-
-type RelationMap = {
-  [K in Keys]: Record<number, Relations[K]>;
+type UnionMap<R extends object> = {
+  [K in keyof R as string]: Record<number, R[K]>;
 };
+
+type Relations = PickArrayChildren<Omit<Pokemon, 'id'>, 'pokemon'>;
+type RelationMap = UnionMap<Relations>;
+
+type Details = PickArrayChildren<Move & Item, 'move' | 'item'>;
+type DetailsMap = UnionMap<Details>;
 
 @Injectable()
 export class PokemonsService {
@@ -168,25 +173,23 @@ export class PokemonsService {
       sprites,
       stats,
       types,
-    } as Relations;
+    };
   }
 
   addDetails(pokemon: Pokemon) {
-    const moves: Array<Move> = pokemon.moves.map((move) => ({
+    const moves = pokemon.moves.map((move) => ({
       ...move,
       version_group_details: move.version_group_details.map(
         ({ move: _, ...rest }) => ({
           ...rest,
-          move,
         }),
       ),
     }));
 
-    const held_items: Array<Item> = pokemon.held_items.map((item) => ({
+    const held_items = pokemon.held_items.map((item) => ({
       ...item,
       version_details: item.version_details.map(({ item: _, ...rest }) => ({
         ...rest,
-        item,
       })),
     }));
 
@@ -205,50 +208,129 @@ export class PokemonsService {
 
   // TODO: too slow
   async createMany(pokemonDtoArr: CreatePokemonDto[]) {
-    let pokemon = pokemonDtoArr.map((pokemonDto) => this.toEntity(pokemonDto));
-    const { raw } = await this.pokemonsRepository
+    const entities = pokemonDtoArr.map((pokemonDto) =>
+      this.toEntity(pokemonDto),
+    );
+
+    await this.pokemonsRepository
       .createQueryBuilder()
       .insert()
-      .values(pokemon)
-      .returning('id')
+      .values(entities)
       .execute();
+    const pokemon = await this.pokemonsRepository
+      .createQueryBuilder()
+      .getMany();
 
     // not typed sadly but more efficient
-    const ids: number[] = raw.map((result: any) => result.id!);
+    const ids = pokemon.map(({ id }) => id!);
     const relations = pokemonDtoArr.map((dto, i) => ({
       inner: this.addRelations(dto, ids[i]),
       id: ids[i],
     }));
+    console.log(ids.length, relations.length);
 
     const relationMap = relations.reduce((init, relations) => {
       const { inner: rest, id } = relations;
 
       return Object.fromEntries(
         Object.entries(rest).map(([k, v]) => [
-          k as Keys,
+          k,
           {
-            ...init[k as Keys],
+            ...init[k as keyof Relations],
             [id]: v,
           },
         ]),
       );
     }, {} as RelationMap);
 
-    Object.keys(relationMap).map((k) => {
-      Object.entries(relationMap[k as Keys]).map(([id, entries]) => {
+    console.log('hi');
+    const saveRelations = Promise.all(
+      Object.keys(relationMap).flatMap((k) =>
+        Object.entries(relationMap[k]).map(([id, entries]) => {
+          const into =
+            k === 'abilities'
+              ? 'ability'
+              : k === 'types'
+                ? 'kind'
+                : k === 'game_indices'
+                  ? 'game_index'
+                  : k.slice(0, -1);
+
+          this.pokemonsRepository
+            .createQueryBuilder()
+            .insert()
+            .into(into)
+            .values(entries)
+            .execute();
+        }),
+      ),
+    );
+    console.log('hi');
+    Object.keys(relationMap).flatMap((k) =>
+      Object.entries(relationMap[k]).map(([id, entries]) => {
+        return this.pokemonsRepository
+          .createQueryBuilder()
+          .insert()
+          .relation(k.toString())
+          .of(id)
+          .printSql()
+          .add(entries);
+      }),
+    );
+    console.log('hi');
+
+    let pokemons = await this.pokemonsRepository
+      .createQueryBuilder()
+      .select()
+      .leftJoin('Pokemon.moves', 'moves')
+      .leftJoin('Pokemon.held_items', 'items')
+      .addSelect(['moves', 'items'])
+      .getMany();
+
+    pokemons = pokemons.map(this.addDetails);
+
+    const version_group_details = pokemons.reduce(
+      (init, { moves }) => ({
+        ...init,
+        ...moves.reduce(
+          (subinit, { id, version_group_details }) => ({
+            ...subinit,
+            [id!]: version_group_details,
+          }),
+          {} as Record<number, MoveVersionDetails>,
+        ),
+      }),
+      {} as Record<number, MoveVersionDetails>,
+    );
+
+    const version_details = pokemons.reduce(
+      (init, { held_items }) => ({
+        ...init,
+        ...held_items.reduce(
+          (subinit, { id, version_details }) => ({
+            ...subinit,
+            [id!]: version_details,
+          }),
+          {} as Record<number, ItemVersionDetails>,
+        ),
+      }),
+      {} as Record<number, ItemVersionDetails>,
+    );
+
+    const detailsMap = { version_details, version_group_details } as DetailsMap;
+
+    const saveDetails = Object.keys(detailsMap).map((k) =>
+      Object.entries(detailsMap[k]).map(([id, entries]) =>
         this.pokemonsRepository
           .createQueryBuilder()
           .relation(k.toString())
           .of(id)
-          .add(entries);
-      });
-    });
+          .add(entries),
+      ),
+    );
+    await Promise.all(saveDetails);
 
-    pokemon = pokemon.map((partial) => this.addDetails(partial));
-    const result = await this.pokemonsRepository.save(pokemon);
-    console.log('3');
-
-    return result;
+    return pokemons;
   }
 
   // show 10 results if no limit was defined

@@ -17,9 +17,12 @@ export class UsersService {
     @InjectRepository(User) private usersRepository: Repository<User>,
   ) {}
 
-  create(createUserDto: CreateUserDto) {
+  async create(createUserDto: CreateUserDto) {
     // save fine here since our DTO is small
-    return this.usersRepository.save(createUserDto);
+    const { password: plain, ...rest } = createUserDto;
+    const password = await bcrypt.hash(plain, 10);
+
+    return this.usersRepository.save({ ...rest, password });
   }
 
   async login(loginUserDto: LoginUserDto) {
