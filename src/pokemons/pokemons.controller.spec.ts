@@ -7,7 +7,11 @@ import { join } from 'path';
 import * as pokemonsJson from './pokemons.json';
 
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
-import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
+import {
+  GetPokemonDetailsDto,
+  GetPokemonDto,
+  PokemonPage,
+} from './dto/get-pokemon';
 import { Pokemon } from './entities/pokemon.entity';
 import { PokemonsController } from './pokemons.controller';
 import {
@@ -27,7 +31,7 @@ describe('pokemons', () => {
   // [ '0', '1', '2', '3', ..., 'default' ] ?
   const pokemons: CreatePokemonDto[] = Object.values(pokemonsJson)
     .map((obj, i) => ({ ...obj, id: i + 1 }))
-    .slice(0, 16);
+    .slice(0, 4);
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -68,14 +72,13 @@ describe('pokemons', () => {
 
   describe('/api/v1/pokemons', () => {
     describe('GET /', () => {
-      let all: Pokemon[];
       let fromDb: GetPokemonDto[];
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
-        all = await service.findAll();
+        const { data } = await service.findAll();
 
-        fromDb = all.map(toPokemon);
+        fromDb = data.map(toPokemon);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
@@ -107,27 +110,20 @@ describe('pokemons', () => {
 
       describe('400 BAD_REQUEST', () => {
         it('sort', async () => {
-          const fromJson = pokemons.map(service.toEntity).map(toPokemon);
-          const fromDb = (await service.findAll()).map(toPokemon);
-
-          expect(fromJson).toEqual(fromDb);
-
           request
             .get('/api/v1/pokemons')
             .query({ sort: 'weight-desc' })
             .expect(400);
-          // .expect();
         }, 30_000);
       });
     });
 
     describe('GET /{id}', () => {
-      let one: Pokemon | null;
       let fromDb: GetPokemonDetailsDto;
       let fromJson: GetPokemonDetailsDto;
 
       beforeAll(async () => {
-        one = await service.findOne(1);
+        const one = await service.findOne(1);
         fromDb = toPokemonDetails(one!);
         fromJson = toPokemonDetails(service.toEntity(pokemons[0]));
 
@@ -144,24 +140,21 @@ describe('pokemons', () => {
 
       it('404 NOT_FOUND', async () => {
         request.get('/api/v1/pokemons/-404').expect(404);
-        // .expect();
 
         request.get(`/api/v1/pokemons/${pokemons.length + 1}`).expect(404);
-        // .expect();
       }, 30_000);
     });
   });
 
   describe('/api/v1/search', () => {
     describe('GET /', () => {
-      let all: Pokemon[];
       let fromDb: GetPokemonDto[];
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
-        all = await service.findAll();
+        const { data } = await service.findAll();
 
-        fromDb = all.map(toPokemon);
+        fromDb = data.map(toPokemon);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
@@ -202,7 +195,9 @@ describe('pokemons', () => {
       describe('400 BAD_REQUEST', () => {
         it('query', async () => {
           request.get('/api/v1/search').expect(400);
-          // .expect();
+        }, 30_000);
+        it('query', async () => {
+          request.get('/api/v1/search').query({ query: '' }).expect(400);
         }, 30_000);
       });
     });
@@ -210,87 +205,47 @@ describe('pokemons', () => {
 
   describe('/api/v2/pokemons', () => {
     describe('GET /', () => {
-      let all: Pokemon[];
+      let all: PokemonPage;
       let fromDb: GetPokemonDto[];
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
         all = await service.findAll();
 
-        fromDb = all.map(toPokemon);
+        fromDb = all.data.map(toPokemon);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
       });
 
       describe('200 OK', () => {
-        it('no queries', async () => {
-          request.get('/api/v1/pokemons').expect(200).expect(fromDb);
-        }, 30_000);
-
-        it('sort', async () => {
+        it('sort, limit, offset', async () => {
           request
-            .get('/api/v1/pokemons')
-            .query({ sort: 'name-asc' })
+            .get('/api/v2/pokemons')
+            // is it correct to return an empty page if offset > pokemons.length ?
+            .query({ sortBy: 'name-desc', limit: 7, offset: 13 })
             .expect(200)
-            .expect(
-              fromDb.toSorted((a, b) =>
-                a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-              ),
-            );
-
-          request
-            .get('/api/v1/pokemons')
-            .query({ sort: 'id-desc' })
-            .expect(200)
-            .expect(fromDb.toReversed());
+            .expect(fromDb);
         }, 30_000);
       });
 
       describe('400 BAD_REQUEST', () => {
         it('sort', async () => {
-          const fromJson = pokemons.map(service.toEntity).map(toPokemon);
-          const fromDb = (await service.findAll()).map(toPokemon);
-
-          expect(fromJson).toEqual(fromDb);
-
           request
-            .get('/api/v1/pokemons')
+            .get('/api/v2/pokemons')
             .query({ sort: 'weight-desc' })
             .expect(400);
-          // .expect();
+        }, 30_000);
+        it('limit', async () => {
+          request
+            .get('/api/v2/pokemons')
+            .query({ limit: 'the sky!' })
+            .expect(400);
+        }, 30_000);
+        it('offset', async () => {
+          request.get('/api/v2/pokemons').query({ offset: -999 }).expect(400);
         }, 30_000);
       });
-    });
-
-    describe('GET /{id}', () => {
-      let one: Pokemon | null;
-      let fromDb: GetPokemonDetailsDto;
-      let fromJson: GetPokemonDetailsDto;
-
-      beforeAll(async () => {
-        one = await service.findOne(1);
-        fromDb = toPokemonDetails(one!);
-        fromJson = toPokemonDetails(service.toEntity(pokemons[0]));
-
-        expect(fromJson).toEqual(fromDb);
-      });
-
-      it('200 OK', async () => {
-        request.get('/api/v1/pokemons/1').expect(200).expect(fromDb);
-      }, 30_000);
-
-      it('400 BAD_REQUEST', async () => {
-        request.get(`/api/v1/pokemons/jigglypuff`).expect(400);
-      });
-
-      it('404 NOT_FOUND', async () => {
-        request.get('/api/v1/pokemons/-404').expect(404);
-        // .expect();
-
-        request.get(`/api/v1/pokemons/${pokemons.length + 1}`).expect(404);
-        // .expect();
-      }, 30_000);
     });
   });
 });

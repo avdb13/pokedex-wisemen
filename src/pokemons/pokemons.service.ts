@@ -11,6 +11,7 @@ import {
   SpriteMap,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
+import { PokemonPage } from './dto/get-pokemon';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
@@ -323,12 +324,14 @@ export class PokemonsService {
       .getMany();
   }
 
-  // show 10 results if no limit was defined
-  async findAll(findOpts: FindOptions = {}): Promise<Pokemon[]> {
-    if (isSearchOptions(findOpts)) {
-      const { query, limit } = findOpts;
+  async findAll(
+    findOptions: FindOptions = {},
+    paginated: boolean = false,
+  ): Promise<PokemonPage> {
+    if (isSearchOptions(findOptions)) {
+      const { query, limit = 10 } = findOptions;
 
-      return this.pokemonsRepository
+      const data = await this.pokemonsRepository
         .createQueryBuilder()
         .leftJoin('Pokemon.sprites', 'sprite')
         .leftJoin('Pokemon.types', 'type')
@@ -337,9 +340,16 @@ export class PokemonsService {
         })
         .take(limit)
         .execute();
+
+      return { data };
     }
 
-    const { sortBy, order: direction, limit: take, offset: skip } = findOpts;
+    const {
+      sortBy,
+      order: direction,
+      limit: take = 10,
+      offset: skip = 0,
+    } = findOptions;
 
     const order =
       // sort by ID by default
@@ -351,12 +361,34 @@ export class PokemonsService {
       skip,
     };
 
-    const result = await this.pokemonsRepository.find(opts);
+    const data = await this.pokemonsRepository
+      .createQueryBuilder()
+      .leftJoin('Pokemon.sprites', 'sprite')
+      .leftJoin('Pokemon.types', 'type')
+      .setFindOptions(opts)
+      .getMany();
 
-    return result;
+    if (!paginated) {
+      return { data };
+    }
+    const all = await this.pokemonsRepository
+      .createQueryBuilder()
+      .select()
+      .getMany();
+
+    return {
+      data,
+      metadata: {
+        next: '',
+        previous: '',
+        total: all.length,
+        pages: Math.ceil(all.length / take!),
+        page: Math.floor(skip! / take!),
+      },
+    };
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<Pokemon | null> {
     const pokemon = await this.pokemonsRepository
       .createQueryBuilder()
       .where({ id })
@@ -387,7 +419,6 @@ export class PokemonsService {
       .leftJoinAndSelect('move.version_group_details', 'version_group_details')
       .addSelect([
         'version_group_details.level_learned_at',
-        // we don't need the URLs in our response
         'version_group_details.moveLearnMethodName',
         'version_group_details.versionGroupName',
       ])

@@ -16,18 +16,19 @@ import {
 
 import { PokemonsService } from './pokemons.service';
 import {
-  PokemonsGuard,
+  PokemonOptions,
+  QueryGuard,
   RequestWithFindOptions,
-  SearchGuard,
 } from './pokemons.guard';
 import {
+  PageInterceptor,
   PokemonDetailsInterceptor,
   PokemonInterceptor,
 } from './pokemons.interceptor';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 
 @Controller('/api/v1/pokemons')
-@UseGuards(PokemonsGuard)
+@UseGuards(QueryGuard(false))
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
@@ -79,7 +80,7 @@ export class PokemonsController {
 }
 
 @Controller('/api/v1/search')
-@UseGuards(SearchGuard)
+@UseGuards(QueryGuard(true))
 export class SearchController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
@@ -92,15 +93,25 @@ export class SearchController {
 }
 
 @Controller('/api/v2/pokemons')
-@UseGuards(PokemonsGuard)
+@UseGuards(QueryGuard(false))
 export class PokemonDetailsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
-  @UseInterceptors(PokemonInterceptor)
+  @UseInterceptors(PageInterceptor)
   async findAll(@Req() req: RequestWithFindOptions) {
-    const opts = req.findOptions;
+    const url = req.protocol + '://' + req.get('host') + req.originalUrl;
+    const opts = req.findOptions as PokemonOptions;
+    const { limit = 10, offset = 0 } = opts;
 
-    return this.pokemonsService.findAll(opts);
+    const { data, metadata } = await this.pokemonsService.findAll(opts);
+    return {
+      data,
+      metadata: {
+        ...metadata,
+        next: url + `?limit=${limit}&offset=${offset + limit}`,
+        previous: url + `?limit=${limit}&offset=${offset - limit}`,
+      },
+    };
   }
 }

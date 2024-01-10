@@ -1,11 +1,13 @@
-class GetPokemonDto {
+import { Pokemon } from '../entities/pokemon.entity';
+
+export class GetPokemonDto {
   id: number;
   name: string;
   sprites: SpriteDto;
   types: Array<TypeDto>;
 }
 
-class GetPokemonDetailsDto extends GetPokemonDto {
+export class GetPokemonDetailsDto extends GetPokemonDto {
   height: number;
   weight: number;
   moves: Array<MoveDto>;
@@ -14,6 +16,33 @@ class GetPokemonDetailsDto extends GetPokemonDto {
   stats: Array<StatDto>;
   abilities: Array<AbilityDto>;
   form: string;
+}
+
+export type MaybeArray<T> = T | T[];
+
+// can be made generic
+class Page<T> {
+  data: T;
+  metadata?: MetaData;
+}
+
+export class PokemonPage extends Page<Pokemon[]> {}
+export class GetPokemonPageDto extends Page<GetPokemonDto[]> {}
+
+export class MetaData {
+  next?: string;
+  previous?: string;
+  total: number;
+  pages: number;
+  page: number;
+}
+
+export class MetaDataDto {
+  next?: string;
+  previous?: string;
+  total: number;
+  pages: number;
+  page: number;
 }
 
 class SpriteDto {
@@ -54,5 +83,3 @@ class MoveDetailsDto {
   version_group: string;
   level_learned_at: number;
 }
-
-export { GetPokemonDto, GetPokemonDetailsDto };

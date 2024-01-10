@@ -7,13 +7,16 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
+import {
+  GetPokemonDetailsDto,
+  GetPokemonDto,
+  GetPokemonPageDto,
+  PokemonPage,
+} from './dto/get-pokemon';
 import { Pokemon, Sprite, SpriteMap } from './entities/pokemon.entity';
 
 export const isBaseSprite = (s: Sprite) =>
   !s.is_other && !s.is_animated && !s.is_icons && !s.title;
-
-type MaybeArray<T> = T | T[];
 
 export const toPokemonDetails = (pokemon: Pokemon): GetPokemonDetailsDto => {
   const {
@@ -109,40 +112,46 @@ export const toPokemon = (pokemon: Pokemon): GetPokemonDto => {
 };
 
 export class PokemonInterceptor
-  implements NestInterceptor<MaybeArray<Pokemon>, MaybeArray<GetPokemonDto>>
+  implements NestInterceptor<Pokemon, GetPokemonDto>
 {
   intercept(
     _context: ExecutionContext,
-    next: CallHandler<MaybeArray<Pokemon>>,
-  ): Observable<MaybeArray<GetPokemonDto>> {
+    next: CallHandler<Pokemon>,
+  ): Observable<GetPokemonDto> {
+    return next.handle().pipe(map(toPokemon));
+  }
+}
+
+@Injectable()
+export class PokemonDetailsInterceptor
+  implements NestInterceptor<Pokemon, GetPokemonDetailsDto>
+{
+  intercept(
+    _context: ExecutionContext,
+    next: CallHandler<Pokemon>,
+  ): Observable<GetPokemonDetailsDto> {
     return next.handle().pipe(
       map((pokemon) => {
-        if (Array.isArray(pokemon)) {
-          return pokemon.map((p) => toPokemon(p));
-        }
-
-        return toPokemon(pokemon);
+        return toPokemonDetails(pokemon);
       }),
     );
   }
 }
 
 @Injectable()
-export class PokemonDetailsInterceptor
-  implements
-    NestInterceptor<MaybeArray<Pokemon>, MaybeArray<GetPokemonDetailsDto>>
+export class PageInterceptor
+  implements NestInterceptor<PokemonPage, GetPokemonPageDto>
 {
   intercept(
     _context: ExecutionContext,
-    next: CallHandler<MaybeArray<Pokemon>>,
-  ): Observable<MaybeArray<GetPokemonDetailsDto>> {
+    next: CallHandler<PokemonPage>,
+  ): Observable<GetPokemonPageDto> {
     return next.handle().pipe(
-      map((pokemon) => {
-        if (Array.isArray(pokemon)) {
-          return pokemon.map((p) => toPokemonDetails(p));
-        }
-
-        return toPokemonDetails(pokemon);
+      map(({ data: pokemon, metadata }) => {
+        return {
+          data: pokemon.map((p) => toPokemon(p)),
+          metadata,
+        };
       }),
     );
   }

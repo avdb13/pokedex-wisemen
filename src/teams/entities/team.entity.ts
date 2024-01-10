@@ -10,7 +10,4 @@ export class Team {
 
   @Column('int', { array: true, default: [] })
   pokemons: number[];
-
-  // @ManyToOne(() => User, (user) => user.teams)
-  // user: Relation<User>;
 }
