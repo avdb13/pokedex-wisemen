@@ -6,6 +6,10 @@ import {
   Param,
   BadRequestException,
   NotFoundException,
+  ParseIntPipe,
+  HttpStatus,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import CreateTeamDto from './dto/create-team.dto';
@@ -21,18 +25,15 @@ export class TeamsController {
   }
 
   @Post()
-  create(@Body() createTeamDto: CreateTeamDto) {
-    return this.teamsService.create(createTeamDto);
+  async create(@Body() createTeamDto: CreateTeamDto | Array<CreateTeamDto>) {
+    Array.isArray(createTeamDto)
+      ? await this.teamsService.createMany(createTeamDto)
+      : await this.teamsService.create(createTeamDto);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    const numericId = parseInt(id);
-    if (isNaN(numericId)) {
-      throw new BadRequestException();
-    }
-
-    const result = this.teamsService.findOne(numericId);
+  findOne(@Param('id', new ParseIntPipe()) id: number) {
+    const result = this.teamsService.findOne(id);
     if (!result) {
       throw new NotFoundException();
     }
@@ -41,13 +42,14 @@ export class TeamsController {
   }
 
   @Post(':id')
-  async update(@Param('id') id: string, @Body() { pokemons }: UpdateTeamDto) {
-    const numericId = parseInt(id);
-    if (isNaN(numericId)) {
-      throw new BadRequestException();
-    }
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async update(
+    @Param('id')
+    id: number,
+    @Body() { pokemons }: UpdateTeamDto,
+  ) {
+    const result = await this.teamsService.update(id, pokemons);
 
-    const result = await this.teamsService.update(numericId, pokemons);
     if (!result) {
       throw new NotFoundException();
     }

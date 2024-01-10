@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { UpdateTeamDto } from './dto/update-team.dto';
 import CreateTeamDto from './dto/create-team.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Team } from './entities/team.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 @Injectable()
 export class TeamsService {
@@ -12,14 +11,26 @@ export class TeamsService {
   ) {}
 
   create({ name }: CreateTeamDto) {
-    const team = this.teamsRepository.create();
+    const team = new Team();
     team.name = name;
 
     return this.teamsRepository.save(team);
   }
 
+  createMany(createTeamDto: CreateTeamDto[]) {
+    const teams = createTeamDto.map(({ name }) => {
+      const team = new Team();
+
+      team.name = name;
+
+      return team;
+    });
+
+    return this.teamsRepository.save(teams);
+  }
+
   findAll() {
-    return this.teamsRepository.find();
+    return this.teamsRepository.find({ order: { id: 'ASC' } });
   }
 
   findOne(id: number) {

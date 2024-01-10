@@ -35,5 +35,5 @@ lerna-debug.log*
 !.vscode/extensions.json
 
 # My extra files
-/pokemons.json
-/src/pokemons-simple.json
+src/pokemons/pokemons.json
+src/pokemons/pokemons-simple.json

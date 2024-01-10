@@ -1,11 +1,8 @@
-import { Team } from '../../teams/entities/team.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
-  OneToMany,
   PrimaryGeneratedColumn,
-  Relation,
   UpdateDateColumn,
 } from 'typeorm';
 
@@ -23,8 +20,8 @@ export class User {
   @Column({ select: false })
   password: string;
 
-  @OneToMany(() => Team, (team) => team.user)
-  teams: Relation<Team[]>;
+  //   @OneToMany(() => Team, (team) => team.user)
+  //   teams: Relation<Team[]>;
 
   @CreateDateColumn({
     select: false,

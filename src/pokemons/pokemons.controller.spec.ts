@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { json } from 'express';
 import { join } from 'path';
 
-import * as pokemonsJson from '../pokemons-simple.json';
+import * as pokemonsJson from './pokemons.json';
 
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
 import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
@@ -24,11 +24,10 @@ describe('pokemons', () => {
   let app: INestApplication;
   let service: PokemonsService;
   let request: supertest.SuperTest<supertest.Test>;
-  // [ '0', '1', '2', '3', 'default' ] ?
+  // [ '0', '1', '2', '3', ..., 'default' ] ?
   const pokemons: CreatePokemonDto[] = Object.values(pokemonsJson)
     .map((obj, i) => ({ ...obj, id: i + 1 }))
-    .slice(0, -1);
-  console.log(pokemons.map((p) => p.id));
+    .slice(0, 16);
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -59,16 +58,12 @@ describe('pokemons', () => {
     service = app.get<PokemonsService>(PokemonsService);
     request = supertest(app.getHttpServer());
 
-    try {
-      await request
-        .post('/api/v1/pokemons')
-        .send(pokemons)
-        .set('Content-Type', 'application/json')
-        .set('Accept', 'application/json')
-        .expect(201);
-    } catch (e) {
-      console.log(e);
-    }
+    await request
+      .post('/api/v1/pokemons')
+      .send(pokemons)
+      .set('Content-Type', 'application/json')
+      .set('Accept', 'application/json')
+      .expect(201);
   });
 
   describe('/api/v1/pokemons', () => {
@@ -81,23 +76,7 @@ describe('pokemons', () => {
         all = await service.findAll();
 
         fromDb = all.map(toPokemon);
-        console.log(fromDb);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
-        console.log(fromJson);
-        // console.log(
-        //   inspect(
-        //     fromDb.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        //   inspect(
-        //     fromJson.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        // );
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -172,6 +151,7 @@ describe('pokemons', () => {
       }, 30_000);
     });
   });
+
   describe('/api/v1/search', () => {
     describe('GET /', () => {
       let all: Pokemon[];
@@ -183,20 +163,6 @@ describe('pokemons', () => {
 
         fromDb = all.map(toPokemon);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
-        // console.log(
-        //   inspect(
-        //     fromDb.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        //   inspect(
-        //     fromJson.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        // );
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -205,15 +171,29 @@ describe('pokemons', () => {
         it('query', async () => {
           request
             .get('/api/v1/search')
-            .query({ query: 'arman', limit: 2 })
+            .query({ query: 'arman' })
             .expect(200)
-            .expect(
-              pokemons.filter((p) => p.name.indexOf('arman') >= 0).slice(0, 2),
-            );
+            .expect(pokemons.filter((p) => p.name.indexOf('arman') >= 0));
 
           request
             .get('/api/v1/search')
             .query({ query: 'notapokemon' })
+            .expect(200)
+            .expect([]);
+        }, 30_000);
+
+        it('query and limit', async () => {
+          request
+            .get('/api/v1/search')
+            .query({ query: 'aur', limit: 2 })
+            .expect(200)
+            .expect(
+              pokemons.filter((p) => p.name.indexOf('aur') >= 0).slice(0, 2),
+            );
+
+          request
+            .get('/api/v1/search')
+            .query({ query: 'aur', limit: 0 })
             .expect(200)
             .expect([]);
         }, 30_000);
@@ -227,6 +207,7 @@ describe('pokemons', () => {
       });
     });
   });
+
   describe('/api/v2/pokemons', () => {
     describe('GET /', () => {
       let all: Pokemon[];
@@ -238,20 +219,6 @@ describe('pokemons', () => {
 
         fromDb = all.map(toPokemon);
         fromJson = pokemons.map(service.toEntity).map(toPokemon);
-        // console.log(
-        //   inspect(
-        //     fromDb.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        //   inspect(
-        //     fromJson.map(({ name, types }) => ({ name, types })),
-        //     false,
-        //     null,
-        //     true,
-        //   ),
-        // );
 
         expect(fromJson).toEqual(fromDb);
       });
