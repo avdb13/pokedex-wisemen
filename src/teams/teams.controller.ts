@@ -4,12 +4,11 @@ import {
   Post,
   Body,
   Param,
-  BadRequestException,
   NotFoundException,
   ParseIntPipe,
-  HttpStatus,
   UsePipes,
   ValidationPipe,
+  HttpCode,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import CreateTeamDto from './dto/create-team.dto';
@@ -26,7 +25,7 @@ export class TeamsController {
 
   @Post()
   async create(@Body() createTeamDto: CreateTeamDto | Array<CreateTeamDto>) {
-    Array.isArray(createTeamDto)
+    return Array.isArray(createTeamDto)
       ? await this.teamsService.createMany(createTeamDto)
       : await this.teamsService.create(createTeamDto);
   }
@@ -42,6 +41,7 @@ export class TeamsController {
   }
 
   @Post(':id')
+  @HttpCode(204)
   @UsePipes(new ValidationPipe({ transform: true }))
   async update(
     @Param('id')

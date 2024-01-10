@@ -20,34 +20,18 @@ const teams: Team[] = [
     pokemons: [3, 5, 7],
   },
 ].map((t, i) => ({ ...t, id: i + 1 }));
-console.log(teams);
 
-// import { CreatePokemonDto } from './dto/create-pokemon.dto';
-// import { GetPokemonDetailsDto, GetPokemonDto } from './dto/get-pokemon';
-// import { Pokemon } from './entities/pokemon.entity';
-// import { PokemonsController } from './pokemons.controller';
-// import {
-//   PokemonDetailsInterceptor,
-//   toPokemon,
-//   toPokemonDetails,
-// } from './pokemons.interceptor';
-// import { PokemonsService } from './pokemons.service';
+import { TeamsController } from './teams.controller';
+import { TeamsService } from './teams.service';
+import { UsersModule } from './../users/users.module';
 
 // can't use ES6 import?
 import supertest = require('supertest');
-import { TeamsController } from './teams.controller';
-import { TeamsService } from './teams.service';
-import GetTeamDto from './dto/get-team.dto';
-import { UsersModule } from './../users/users.module';
 
 describe('teams', () => {
   let app: INestApplication;
   let service: TeamsService;
   let request: supertest.SuperTest<supertest.Test>;
-  // // [ '0', '1', '2', '3', 'default' ] ?
-  // const pokemons: CreatePokemonDto[] = Object.values(pokemonsJson)
-  //   .map((obj, i) => ({ ...obj, id: i + 1 }))
-  //   .slice(0, -1);
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -93,7 +77,7 @@ describe('teams', () => {
           .send({ pokemons })
           .set('Content-Type', 'application/json')
           .set('Accept', 'application/json')
-          .expect(201),
+          .expect(204),
       ),
     );
   });
@@ -101,12 +85,11 @@ describe('teams', () => {
   describe('/api/v1/teams', () => {
     describe('GET /', () => {
       let all: Team[];
-      let fromDb: GetTeamDto[];
-      let fromJson: GetTeamDto[];
+      let fromDb: Team[];
+      let fromJson: Team[];
 
       beforeAll(async () => {
         all = await service.findAll();
-        console.log('all', all);
 
         fromDb = all;
         fromJson = teams;
@@ -117,6 +100,57 @@ describe('teams', () => {
       describe('200 OK', () => {
         it('', async () => {
           request.get('/api/v1/teams').expect(200).expect(fromDb);
+        }, 30_000);
+      });
+    });
+
+    describe('GET /{id}', () => {
+      let one: Team | null;
+      let fromDb: Team | null;
+      let fromJson: Team | null;
+
+      beforeAll(async () => {
+        one = await service.findOne(2);
+
+        fromDb = one;
+        fromJson = teams[1];
+
+        expect(fromJson).toEqual(fromDb);
+      });
+
+      describe('200 OK', () => {
+        it('', async () => {
+          request.get('/api/v1/teams').expect(200).expect(fromDb!);
+        }, 30_000);
+      });
+    });
+
+    describe('POST /', () => {
+      describe('201 CREATED', () => {
+        it('', async () => {
+          await request
+            .post('/api/v1/teams')
+            .send({ name: 'Team Rocket' })
+            .expect(201);
+
+          const fromDb = await service.findOne(teams.length + 1);
+          expect({
+            id: teams.length + 1,
+            name: 'Team Rocket',
+            pokemons: [],
+          }).toEqual(fromDb);
+        }, 30_000);
+      });
+    });
+
+    describe('POST /{id}', () => {
+      describe('204 NO_CONTENT', () => {
+        it('', async () => {
+          const newTeam = { ...teams[2], pokemons: [1, 1, 3] };
+          await request.post(`/api/v1/teams/${3}`).send(newTeam).expect(204);
+
+          const fromDb = await service.findOne(3);
+          expect(newTeam).toEqual(fromDb);
         }, 30_000);
       });
     });

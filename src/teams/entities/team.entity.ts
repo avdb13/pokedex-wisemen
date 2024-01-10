@@ -8,7 +8,7 @@ export class Team {
   @Column()
   name: string;
 
-  @Column('int', { nullable: true, array: true })
+  @Column('int', { array: true, default: [] })
   pokemons: number[];
 
   // @ManyToOne(() => User, (user) => user.teams)

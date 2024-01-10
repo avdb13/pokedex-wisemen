@@ -34,7 +34,7 @@ export class TeamsService {
   }
 
   findOne(id: number) {
-    return this.teamsRepository.findBy({ id });
+    return this.teamsRepository.findOneBy({ id });
   }
 
   async update(id: number, pokemonArr: number[]) {

@@ -121,7 +121,7 @@ describe('pokemons', () => {
       });
     });
 
-    describe('GET /{:id}', () => {
+    describe('GET /{id}', () => {
       let one: Pokemon | null;
       let fromDb: GetPokemonDetailsDto;
       let fromJson: GetPokemonDetailsDto;
@@ -263,7 +263,7 @@ describe('pokemons', () => {
       });
     });
 
-    describe('GET /{:id}', () => {
+    describe('GET /{id}', () => {
       let one: Pokemon | null;
       let fromDb: GetPokemonDetailsDto;
       let fromJson: GetPokemonDetailsDto;
