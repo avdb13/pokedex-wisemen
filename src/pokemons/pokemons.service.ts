@@ -5,16 +5,12 @@ import { FindManyOptions, Repository } from 'typeorm';
 import { CreatePokemonDto, NoNull } from './dto/create-pokemon.dto';
 import {
   Item,
-  ItemVersionDetails,
   Move,
-  MoveVersionDetails,
   Pokemon,
   Sprite,
   SpriteMap,
-  titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
-import { inspect } from 'util';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
@@ -44,9 +40,10 @@ export class PokemonsService {
   ) {}
 
   toEntity(pokemonDto: CreatePokemonDto) {
-    const pokemon = this.pokemonsRepository.create();
+    const pokemon = new Pokemon();
 
     const {
+      id,
       base_experience,
       height,
       is_default,
@@ -56,6 +53,7 @@ export class PokemonsService {
       weight,
     } = pokemonDto;
 
+    pokemon.id = id;
     pokemon.base_experience = base_experience;
     pokemon.height = height;
     pokemon.is_default = is_default;
@@ -123,21 +121,21 @@ export class PokemonsService {
                 {
                   ...(spriteMap as NoNull<SpriteMap>),
                   pokemon,
-                  title: title in titles ? title : undefined,
+                  title,
                   is_icons: title === 'icons',
                 },
                 {
                   ...(spriteMap.animated as NoNull<SpriteMap>),
                   is_animated: true,
                   pokemon,
-                  title: title in titles ? title : undefined,
+                  title,
                 },
               ]
             : [
                 {
                   ...(spriteMap as NoNull<SpriteMap>),
                   pokemon,
-                  title: title in titles ? title : undefined,
+                  title,
                   is_icons: title === 'icons',
                 },
               ],
@@ -174,16 +172,76 @@ export class PokemonsService {
   }
 
   async create(pokemonDto: CreatePokemonDto) {
-    // const pokemon = this.toEntity(pokemonDto);
-    // await this.pokemonsRepository
-    //   .createQueryBuilder()
-    //   .insert()
-    //   .values(pokemon)
-    //   .execute();
-    // return this.pokemonsRepository.createQueryBuilder().getOne();
+    const entity = this.toEntity(pokemonDto);
+
+    await this.pokemonsRepository.insert(entity);
+
+    // must be the latest
+    let preload = await this.pokemonsRepository.createQueryBuilder().getOne();
+
+    const relations: RelationMap = Object.fromEntries(
+      Object.entries(entity).filter(([_k, v]) => Array.isArray(v)),
+    );
+
+    const saveRelations = Object.keys(relations).map((k) =>
+      this.pokemonsRepository
+        .createQueryBuilder()
+        .insert()
+        .values(
+          relations[k].map((r) => ({
+            ...r,
+            pokemon: preload,
+          })),
+        )
+        .into(k)
+        .execute(),
+    );
+    await Promise.all(saveRelations);
+
+    preload = await this.pokemonsRepository
+      .createQueryBuilder()
+      .select()
+      .leftJoinAndSelect('Pokemon.moves', 'moves')
+      .leftJoinAndSelect('Pokemon.held_items', 'held_items')
+      .getOne();
+
+    // can be made faster
+    const details = {
+      version_details: preload!.held_items.flatMap((v, j) =>
+        entity.held_items[j].version_details.map(({ item: _, ...rest }) => ({
+          item: v,
+          ...rest,
+        })),
+      ),
+      version_group_details: preload!.moves.flatMap((v, j) =>
+        entity.moves[j].version_group_details.map(({ move: _, ...rest }) => ({
+          move: v,
+          ...rest,
+        })),
+      ),
+    };
+
+    const detailsMap: DetailsMap = Object.fromEntries(
+      Object.entries(details).filter(([_k, v]) => Array.isArray(v)),
+    );
+
+    const saveDetails = Object.keys(detailsMap).map((k) =>
+      this.pokemonsRepository
+        .createQueryBuilder()
+        .insert()
+        .values(detailsMap[k])
+        .into(k)
+        .execute(),
+    );
+    await Promise.all(saveDetails);
+
+    return this.pokemonsRepository
+      .createQueryBuilder()
+      .leftJoinAndSelect('Pokemon.sprites', 'sprite')
+      .leftJoinAndSelect('Pokemon.types', 'type')
+      .getOne();
   }
 
-  // TODO: too slow
   async createMany(pokemonDtoArr: CreatePokemonDto[]) {
     const entities = pokemonDtoArr.map((pokemonDto) =>
       this.toEntity(pokemonDto),
@@ -222,6 +280,7 @@ export class PokemonsService {
       .orderBy('Pokemon.id', 'ASC')
       .getMany();
 
+    // can be made faster
     const details = preload.map(({ held_items, moves }, i) => ({
       version_details: held_items.flatMap((v, j) =>
         entities[i].held_items[j].version_details.map(
@@ -283,11 +342,8 @@ export class PokemonsService {
     const { sortBy, order: direction, limit: take, offset: skip } = findOpts;
 
     const order =
-      sortBy === 'name'
-        ? { form: { name: direction } }
-        : sortBy === 'id'
-          ? { id: direction }
-          : undefined;
+      // sort by ID by default
+      sortBy === 'name' ? { form: { name: direction } } : { id: direction };
     const opts: FindManyOptions = {
       relations: ['sprites', 'types'],
       order,
@@ -302,7 +358,7 @@ export class PokemonsService {
 
   async findOne(id: number) {
     const pokemon = await this.pokemonsRepository
-      .createQueryBuilder('pokemon')
+      .createQueryBuilder()
       .where({ id })
       // not sure if indices are used automatically, should have given descriptive names
       .useIndex('IDX_ee2a4e1b57db5392145fe6eefb')
@@ -310,6 +366,7 @@ export class PokemonsService {
       .useIndex('IDX_e838af4590b44f9f01fb5a355b')
       .useIndex('IDX_67af8e7b41ad55426cc3932bb7')
       .leftJoinAndSelect('Pokemon.sprites', 'sprite')
+      .leftJoinAndSelect('Pokemon.moves', 'move')
       .leftJoinAndSelect('Pokemon.types', 'type')
       .leftJoinAndSelect('Pokemon.stats', 'stat')
       .leftJoinAndSelect('Pokemon.abilities', 'ability')
@@ -323,7 +380,7 @@ export class PokemonsService {
     // also due to a bug that doesn't properly expand embedded entities
     // https://github.com/typeorm/typeorm/issues/8112
     const rest = await this.pokemonsRepository
-      .createQueryBuilder('pokemon')
+      .createQueryBuilder('Pokemon')
       .where({ id })
       .useIndex('IDX_ce791a0a93f777c04011f2a403')
       .leftJoinAndSelect('Pokemon.moves', 'move')
