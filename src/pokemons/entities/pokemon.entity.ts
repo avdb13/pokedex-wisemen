@@ -1,10 +1,8 @@
-import morgan = require('morgan');
 import {
   Relation,
   Column,
   Entity,
   JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "resolveJsonModule": true,
     "module": "commonjs",
+    // doesn't work
     "esModuleInterop": true,
     "declaration": true,
     "removeComments": true,
