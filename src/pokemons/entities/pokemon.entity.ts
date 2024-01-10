@@ -1,3 +1,4 @@
+import morgan = require('morgan');
 import {
   Relation,
   Column,
@@ -46,9 +47,9 @@ export class Pokemon {
   height: number;
 
   // many-to-many since there's a finite number of items
-  @ManyToMany(() => Item, {
+  @OneToMany(() => Item, (item) => item.pokemon, {
     cascade: true,
-    onDelete: 'SET NULL',
+    onDelete: 'CASCADE',
   })
   @JoinTable()
   held_items: Relation<Item[]>;
@@ -59,9 +60,9 @@ export class Pokemon {
   @Column()
   location_area_encounters: string;
 
-  @ManyToMany(() => Move, {
+  @OneToMany(() => Move, (move) => move.pokemon, {
     cascade: true,
-    onDelete: 'SET NULL',
+    onDelete: 'CASCADE',
   })
   @JoinTable()
   moves: Relation<Move[]>;

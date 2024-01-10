@@ -11,6 +11,8 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     PokemonsModule,
+    TeamsModule,
+    UsersModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',

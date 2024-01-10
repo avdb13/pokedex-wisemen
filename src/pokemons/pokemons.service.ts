@@ -14,6 +14,7 @@ import {
   titles,
 } from './entities/pokemon.entity';
 import { FindOptions, SearchOptions } from './pokemons.guard';
+import { inspect } from 'util';
 
 const isSearchOptions = (opts: FindOptions): opts is SearchOptions =>
   'query' in opts;
@@ -107,6 +108,7 @@ export class PokemonsService {
             move,
           })),
         };
+
         return move;
       },
     );
@@ -189,7 +191,9 @@ export class PokemonsService {
 
     await this.pokemonsRepository.insert(entities);
 
-    const saveRelations = entities.flatMap((e) => {
+    let preload = await this.pokemonsRepository.createQueryBuilder().getMany();
+
+    const saveRelations = entities.flatMap((e, i) => {
       const relations: RelationMap = Object.fromEntries(
         Object.entries(e).filter(([_k, v]) => Array.isArray(v)),
       );
@@ -198,23 +202,44 @@ export class PokemonsService {
         this.pokemonsRepository
           .createQueryBuilder()
           .insert()
-          .values(relations[k].map(({ pokemon: _, ...rest }) => rest))
+          .values(
+            relations[k].map((r) => ({
+              ...r,
+              pokemon: preload[i],
+            })),
+          )
           .into(k)
           .execute(),
       );
     });
     await Promise.all(saveRelations);
 
-    const preload = await this.pokemonsRepository
+    preload = await this.pokemonsRepository
       .createQueryBuilder()
+      .select()
       .leftJoinAndSelect('Pokemon.moves', 'moves')
       .leftJoinAndSelect('Pokemon.held_items', 'held_items')
+      .orderBy('Pokemon.id', 'ASC')
       .getMany();
 
-    const details = preload.flatMap((e) => ({
-      version_group_details: e.held_items.flatMap((m) => m.version_details),
-      version_details: e.moves.flatMap((m) => m.version_group_details),
-    })) as DetailsMap[];
+    const details = preload.map(({ held_items, moves }, i) => ({
+      version_details: held_items.flatMap((v, j) =>
+        entities[i].held_items[j].version_details.map(
+          ({ item: _, ...rest }) => ({
+            item: v,
+            ...rest,
+          }),
+        ),
+      ),
+      version_group_details: moves.flatMap((v, j) =>
+        entities[i].moves[j].version_group_details.map(
+          ({ move: _, ...rest }) => ({
+            move: v,
+            ...rest,
+          }),
+        ),
+      ),
+    }));
 
     const saveDetails = details.flatMap((d) => {
       const details: DetailsMap = Object.fromEntries(
@@ -225,7 +250,7 @@ export class PokemonsService {
         this.pokemonsRepository
           .createQueryBuilder()
           .insert()
-          .values(details[k].map((value) => ({ ...value })))
+          .values(details[k])
           .into(k)
           .execute(),
       );
