@@ -8,6 +8,8 @@ import {
   PrimaryGeneratedColumn,
   Index,
 } from 'typeorm';
+import { CreatePokemonDto, NoNull } from '../dto/create-pokemon.dto';
+import { Details, Relations } from '../pokemons.service';
 
 abstract class NameAndUrl {
   @Column()
@@ -68,12 +70,6 @@ export class Pokemon {
   @Column()
   order: number;
 
-  // @OneToMany(() => PastType, (past_type) => past_type.pokemon, {
-  //   cascade: true,
-  //   onDelete: 'CASCADE',
-  // })
-  // past_types: Relation<PastType[]>;
-
   @Column(() => NameAndUrl)
   // all species arrays are of length one in our data
   species: NameAndUrl;
@@ -98,6 +94,246 @@ export class Pokemon {
 
   @Column()
   weight: number;
+
+  public fromDto(pokemon: CreatePokemonDto) {
+    const {
+      id,
+      base_experience,
+      height,
+      is_default,
+      location_area_encounters,
+      order,
+      species,
+      weight,
+    } = pokemon;
+
+    this.id = id;
+    this.base_experience = base_experience;
+    this.height = height;
+    this.is_default = is_default;
+    this.location_area_encounters = location_area_encounters;
+    this.order = order;
+    this.species = species;
+    this.weight = weight;
+    this.form = pokemon.forms[0];
+  }
+
+  public createRelations(pokemon: CreatePokemonDto): Relations {
+    const abilities = pokemon.abilities.map(({ ability, ...rest }) => ({
+      ...ability,
+      ...rest,
+      pokemon: this,
+    }));
+
+    const game_indices = pokemon.game_indices.map(
+      ({ version, game_index }) => ({
+        ...version,
+        value: game_index,
+        pokemon: this,
+      }),
+    );
+
+    const held_items = pokemon.held_items.map(
+      ({ item: rest, version_details: _ }) => {
+        let item = new Item();
+
+        item = {
+          pokemon: this,
+          ...rest,
+          version_details: [],
+        };
+
+        return item;
+      },
+    );
+
+    const moves = pokemon.moves.map(
+      ({ move: rest, version_group_details: _ }) => {
+        let move = new Move();
+        move = {
+          ...rest,
+          pokemon: this,
+          version_group_details: [],
+        };
+
+        return move;
+      },
+    );
+
+    const { other, versions, ...baseSprites } = pokemon.sprites;
+
+    const spritesByVersion = Object.entries(versions).flatMap(
+      ([_generation, sprites]) =>
+        Object.entries(sprites).flatMap(([title, spriteMap]) =>
+          spriteMap.animated
+            ? [
+                {
+                  ...(spriteMap as NoNull<SpriteMap>),
+                  pokemon: this,
+                  title,
+                  is_icons: title === 'icons',
+                },
+                {
+                  ...(spriteMap.animated as NoNull<SpriteMap>),
+                  is_animated: true,
+                  pokemon: this,
+                  title,
+                },
+              ]
+            : [
+                {
+                  ...(spriteMap as NoNull<SpriteMap>),
+                  pokemon: this,
+                  title,
+                  is_icons: title === 'icons',
+                },
+              ],
+        ),
+    );
+
+    const otherSprites = Object.entries(other).map(([title, spriteMap]) => ({
+      ...(spriteMap as NoNull<SpriteMap>),
+      pokemon: this,
+      isOther: true,
+      title,
+    }));
+
+    const sprites = [
+      { ...baseSprites, pokemon },
+      ...spritesByVersion,
+      ...otherSprites,
+    ] as Sprite[];
+
+    const stats = pokemon.stats.map(({ stat, effort, base_stat }) => ({
+      ...stat,
+      effort,
+      base_stat,
+      pokemon: this,
+    }));
+
+    const types = pokemon.types.map(({ slot, type }) => ({
+      ...type,
+      slot,
+      pokemon: this,
+    }));
+
+    return {
+      abilities,
+      game_indices,
+      held_items,
+      moves,
+      sprites,
+      stats,
+      types,
+    };
+  }
+
+  public getRelations(): Relations {
+    const {
+      abilities,
+      game_indices,
+      held_items,
+      moves,
+      sprites,
+      stats,
+      types,
+    } = this;
+
+    return {
+      abilities,
+      game_indices,
+      held_items,
+      moves,
+      sprites,
+      stats,
+      types,
+    };
+  }
+
+  public updateRelations(relations: Relations) {
+    const {
+      abilities,
+      game_indices,
+      held_items,
+      moves,
+      sprites,
+      stats,
+      types,
+    } = relations;
+
+    this.abilities = abilities;
+    this.game_indices = game_indices;
+    this.held_items = held_items;
+    this.moves = moves;
+    this.sprites = sprites;
+    this.stats = stats;
+    this.types = types;
+  }
+
+  public getDetails(): Details {
+    return {
+      version_details: this.held_items.flatMap(
+        ({ version_details }) => version_details,
+      ),
+      version_group_details: this.moves.flatMap(
+        ({ version_group_details }) => version_group_details,
+      ),
+    };
+  }
+
+  public createDetails(pokemon: CreatePokemonDto): Details {
+    const held_items = pokemon.held_items.map(
+      ({ item: rest, version_details }) => {
+        let item = new Item();
+
+        item = {
+          pokemon: this,
+          ...rest,
+          version_details: version_details.map(({ version, ...rest }) => ({
+            ...version,
+            ...rest,
+            item,
+          })),
+        };
+
+        return item;
+      },
+    );
+
+    const moves = pokemon.moves.map(({ move: rest, version_group_details }) => {
+      let move = new Move();
+      move = {
+        ...rest,
+        pokemon: this,
+        version_group_details: version_group_details.map((details) => ({
+          ...details,
+          move,
+        })),
+      };
+
+      return move;
+    });
+
+    return {
+      version_details: held_items.flatMap(
+        ({ version_details }) => version_details,
+      ),
+      version_group_details: moves.flatMap(
+        ({ version_group_details }) => version_group_details,
+      ),
+    };
+  }
+
+  public updateDetails({ version_details, version_group_details }: Details) {
+    this.moves = this.moves.map((v, i) => ({
+      ...v,
+      version_details: version_details[i],
+    }));
+    this.held_items = this.held_items.map((v, i) => ({
+      ...v,
+      version_group_details: version_group_details[i],
+    }));
+  }
 }
 
 @Entity({ name: 'abilities' })
@@ -288,32 +524,3 @@ export const titles = Object.values(generationRecord).flatMap(
 
 export type Title =
   (typeof generationRecord)[keyof typeof generationRecord][number];
-
-// @Entity()
-// export class PastType extends NameAndUrl {
-//   @PrimaryGeneratedColumn()
-//   id?: number;
-
-//   @OneToMany(() => PastTypeKind, (type) => type.parent, {
-//     cascade: true,
-//     onDelete: 'CASCADE',
-//   })
-//   types: Relation<PastTypeKind[]>;
-
-//   @ManyToOne(() => Pokemon, (pokemon) => pokemon.past_types)
-//   @Index()
-//   pokemon: Relation<Pokemon>;
-// }
-
-// @Entity()
-// export class PastTypeKind extends NameAndUrl {
-//   @PrimaryGeneratedColumn()
-//   id?: number;
-
-//   @ManyToOne(() => PastType, (past_type) => past_type.types)
-//   @Index()
-//   parent?: Relation<PastType>;
-
-//   @Column()
-//   slot: number;
-// }

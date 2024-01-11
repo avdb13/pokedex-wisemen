@@ -1,43 +1,41 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
-  HttpCode,
   HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Req,
-  UseGuards,
   UseInterceptors,
+  ValidationPipe,
 } from '@nestjs/common';
 
 import { PokemonsService } from './pokemons.service';
-import {
-  PokemonOptions,
-  QueryGuard,
-  RequestWithFindOptions,
-} from './pokemons.guard';
 import {
   PageInterceptor,
   PokemonDetailsInterceptor,
   PokemonInterceptor,
 } from './pokemons.interceptor';
 import { CreatePokemonDto } from './dto/create-pokemon.dto';
+import { Request } from 'express';
+import { FindOptionsDto, PokemonOptionsDto } from './dto/find-options.dto';
+import { PAGE_SIZE } from './pokemons.constant';
 
 @Controller('/api/v1/pokemons')
-@UseGuards(QueryGuard(false))
 export class PokemonsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
   @UseInterceptors(PokemonInterceptor)
-  async findAll(@Req() req: RequestWithFindOptions) {
-    const options = req.findOptions;
+  async findAll(
+    @Query(new ValidationPipe({ transform: true })) options: FindOptionsDto,
+  ) {
+    const { data } = await this.pokemonsService.findAll(options);
 
-    return this.pokemonsService.findAll(options);
+    return data;
   }
 
   @Get(':id')
@@ -49,11 +47,7 @@ export class PokemonsController {
     )
     id: number,
   ) {
-    if (id < 1) {
-      throw new NotFoundException();
-    }
-
-    const pokemon = await this.pokemonsService.findOne(id);
+    const pokemon = await this.pokemonsService.findOne(Math.abs(id));
 
     if (!pokemon) {
       throw new NotFoundException();
@@ -63,54 +57,83 @@ export class PokemonsController {
   }
 
   @Post()
-  // this returns circular JSON, drop the return value!
   async importFromJson(
-    @Body() body: CreatePokemonDto | Array<CreatePokemonDto>,
+    @Body()
+    body: CreatePokemonDto | Array<CreatePokemonDto>,
   ) {
     return Array.isArray(body)
       ? await this.pokemonsService.createMany(body)
       : await this.pokemonsService.create(body);
   }
-
-  @Delete()
-  @HttpCode(204)
-  removeAll() {
-    return this.pokemonsService.removeAll();
-  }
 }
 
 @Controller('/api/v1/search')
-@UseGuards(QueryGuard(true))
 export class SearchController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
-  async findAll(@Req() req: RequestWithFindOptions) {
-    const opts = req.findOptions;
+  async findAll(
+    @Query(new ValidationPipe({ transform: true })) options: FindOptionsDto,
+  ) {
+    const { data } = await this.pokemonsService.findAll(options);
 
-    return this.pokemonsService.findAll(opts);
+    return data;
   }
 }
 
 @Controller('/api/v2/pokemons')
-@UseGuards(QueryGuard(false))
 export class PokemonDetailsController {
   constructor(private readonly pokemonsService: PokemonsService) {}
 
   @Get()
   @UseInterceptors(PageInterceptor)
-  async findAll(@Req() req: RequestWithFindOptions) {
-    const url = req.protocol + '://' + req.get('host') + req.originalUrl;
-    const opts = req.findOptions as PokemonOptions;
-    const { limit = 10, offset = 0 } = opts;
+  async findAll(
+    @Query(new ValidationPipe({ transform: true })) options: PokemonOptionsDto,
+    @Req() req: Request,
+  ) {
+    const { data, metadata } = await this.pokemonsService.findAll(
+      options,
+      true,
+    );
 
-    const { data, metadata } = await this.pokemonsService.findAll(opts);
+    const next = new URL(
+      req.originalUrl,
+      req.protocol + '://' + req.get('host'),
+    );
+    const previous = Object.assign(next);
+
+    if (options.sort) {
+      const [sortBy, order] = options.sort.split('-', 2)!;
+      next.searchParams.set('sort', `${sortBy}-${order}`);
+    }
+
+    if (options.limit && options.limit > 0) {
+      next.searchParams.set('limit', options.limit.toString());
+    }
+
+    if (options.offset && options.offset > 0) {
+      next.searchParams.set(
+        'offset',
+        (metadata!.total !== 0
+          ? (options.offset + PAGE_SIZE) % metadata!.total
+          : 0
+        ).toString(),
+      );
+      previous.searchParams.set(
+        'offset',
+        (metadata!.total !== 0
+          ? (options.offset - PAGE_SIZE) % metadata!.total
+          : 0
+        ).toString(),
+      );
+    }
+
     return {
       data,
       metadata: {
         ...metadata,
-        next: url + `?limit=${limit}&offset=${offset + limit}`,
-        previous: url + `?limit=${limit}&offset=${offset - limit}`,
+        next,
+        previous,
       },
     };
   }

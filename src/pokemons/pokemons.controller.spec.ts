@@ -31,7 +31,17 @@ describe('pokemons', () => {
   // [ '0', '1', '2', '3', ..., 'default' ] ?
   const pokemons: CreatePokemonDto[] = Object.values(pokemonsJson)
     .map((obj, i) => ({ ...obj, id: i + 1 }))
-    .slice(0, 4);
+    .slice(0, 24);
+
+  const toEntity = (dto: CreatePokemonDto) => {
+    const p = new Pokemon();
+
+    p.fromDto(dto);
+    p.updateRelations(p.createRelations(dto));
+    p.updateDetails(p.createDetails(dto));
+
+    return p;
+  };
 
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
@@ -44,8 +54,6 @@ describe('pokemons', () => {
           username: 'pokedex',
           entities: [join(__dirname, '**', '*.entity.{ts,js}')],
           database: 'pokedex',
-          synchronize: true,
-          dropSchema: true,
           logging: ['error'],
         }),
         TypeOrmModule.forFeature([Pokemon]),
@@ -56,7 +64,7 @@ describe('pokemons', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.use(json({ limit: '10mb' }));
+    app.use(json({ limit: '1000mb' }));
     await app.init();
 
     service = app.get<PokemonsService>(PokemonsService);
@@ -76,10 +84,10 @@ describe('pokemons', () => {
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
-        const { data } = await service.findAll();
+        const { data } = await service.findAll({});
 
         fromDb = data.map(toPokemon);
-        fromJson = pokemons.map(service.toEntity).map(toPokemon);
+        fromJson = pokemons.map(toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -125,7 +133,7 @@ describe('pokemons', () => {
       beforeAll(async () => {
         const one = await service.findOne(1);
         fromDb = toPokemonDetails(one!);
-        fromJson = toPokemonDetails(service.toEntity(pokemons[0]));
+        fromJson = toPokemonDetails(toEntity(pokemons[0]));
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -152,10 +160,10 @@ describe('pokemons', () => {
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
-        const { data } = await service.findAll();
+        const { data } = await service.findAll({});
 
         fromDb = data.map(toPokemon);
-        fromJson = pokemons.map(service.toEntity).map(toPokemon);
+        fromJson = pokemons.map(toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -210,10 +218,10 @@ describe('pokemons', () => {
       let fromJson: GetPokemonDto[];
 
       beforeAll(async () => {
-        all = await service.findAll();
+        all = await service.findAll({});
 
         fromDb = all.data.map(toPokemon);
-        fromJson = pokemons.map(service.toEntity).map(toPokemon);
+        fromJson = pokemons.map(toEntity).map(toPokemon);
 
         expect(fromJson).toEqual(fromDb);
       });
@@ -222,10 +230,23 @@ describe('pokemons', () => {
         it('sort, limit, offset', async () => {
           request
             .get('/api/v2/pokemons')
-            // is it correct to return an empty page if offset > pokemons.length ?
             .query({ sortBy: 'name-desc', limit: 7, offset: 13 })
             .expect(200)
-            .expect(fromDb);
+            .expect({
+              data: fromDb
+                .slice(13, 13 + 7)
+                .toSorted((a, b) =>
+                  a.name < b.name ? 1 : a.name > b.name ? -1 : 0,
+                ),
+              metadata: {
+                total: 7,
+                pages: 3,
+                page: 1,
+                next: 'http://localhost:3000/api/v2/pokemons?sort=name-asc&limit=7&offset=21',
+                previous:
+                  'http://localhost:3000/api/v2/pokemons?sort=name-asc&limit=7&offset=5',
+              },
+            });
         }, 30_000);
       });
 

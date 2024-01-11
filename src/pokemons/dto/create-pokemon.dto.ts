@@ -1,4 +1,6 @@
+import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
+import { Item, Move, Pokemon, Sprite } from '../entities/pokemon.entity';
 
 type NameAndUrl = {
   name: string;

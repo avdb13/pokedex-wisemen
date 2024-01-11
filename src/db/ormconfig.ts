@@ -7,7 +7,7 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USERNAME ?? 'pokedex',
   password: process.env.DB_PASSWORD ?? 'pokedex',
   database: process.env.DB_NAME ?? 'pokedex',
-  logging: ['error'],
+  logging: ['error', 'query'],
   entities: ['dist/**/entities/*.{js,ts}'],
   migrations: ['dist/migrations/*.{js,ts}'],
   synchronize: !process.env.NODE_ENV?.startsWith('prod'),
